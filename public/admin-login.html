@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — TrashScan</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/">Scanner</a>
+  <a href="/dashboard.html">Digital Twin</a>
+  <a href="/admin-login.html" class="active" style="margin-left:auto;">🔐 Admin</a>
+</nav>
+
+<div class="page" style="max-width: 440px;">
+  <h1>🔐 Admin Login</h1>
+
+  <div class="card">
+    <form id="login-form">
+      <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+        <label for="password-input">Password</label>
+        <input
+          type="password"
+          id="password-input"
+          placeholder="Enter admin password"
+          autocomplete="current-password"
+          style="width:100%; padding:10px 14px; border:1px solid #cde; border-radius:8px; font-size:1rem;"
+        />
+      </div>
+
+      <div style="margin-top: 20px; display:flex; gap:12px; flex-wrap:wrap;">
+        <button type="submit" class="btn btn-scan">🔓 Login</button>
+        <a href="/" class="btn btn-secondary">🏠 Back to Home</a>
+      </div>
+    </form>
+
+    <div class="spinner" id="spinner" style="margin-top:14px;"></div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+</div>
+
+<script src="/js/admin-login.js"></script>
+</body>
+</html>

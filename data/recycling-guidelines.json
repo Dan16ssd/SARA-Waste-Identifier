@@ -1,0 +1,98 @@
+{
+  "plastic": {
+    "name": "Plastic",
+    "recyclable": true,
+    "guidelines": [
+      "Rinse the container thoroughly",
+      "Remove caps and labels",
+      "Place in blue recycling bin",
+      "Avoid crushing (helps sorting machines)",
+      "Do not include plastic bags"
+    ],
+    "icon": "♻️"
+  },
+  "metal": {
+    "name": "Metal (Aluminum/Steel)",
+    "recyclable": true,
+    "guidelines": [
+      "Rinse cans and containers",
+      "Remove any plastic or paper labels",
+      "Place in blue recycling bin",
+      "Aluminum and steel are highly recyclable",
+      "Avoid mixing with other materials"
+    ],
+    "icon": "🔩"
+  },
+  "glass": {
+    "name": "Glass",
+    "recyclable": true,
+    "guidelines": [
+      "Rinse glass containers",
+      "Remove metal lids and caps",
+      "Place in green glass recycling bin",
+      "Keep glass separate from other materials",
+      "Avoid broken glass (safety hazard)"
+    ],
+    "icon": "🍾"
+  },
+  "paper": {
+    "name": "Paper/Cardboard",
+    "recyclable": true,
+    "guidelines": [
+      "Flatten cardboard boxes",
+      "Remove plastic windows and tape",
+      "Place in brown paper recycling bin",
+      "Keep dry to prevent degradation",
+      "Avoid contamination with food or grease"
+    ],
+    "icon": "📄"
+  },
+  "organic": {
+    "name": "Organic/Food Waste",
+    "recyclable": true,
+    "guidelines": [
+      "Place in brown compost bin",
+      "Include food scraps, peels, and leftovers",
+      "Avoid meat, dairy, and oils",
+      "Compost is converted to soil nutrients",
+      "Reduces methane emissions from landfills"
+    ],
+    "icon": "🌱"
+  },
+  "ewaste": {
+    "name": "E-Waste (Electronics)",
+    "recyclable": true,
+    "guidelines": [
+      "Do NOT place in regular bins",
+      "Take to designated e-waste collection center",
+      "Contains valuable metals and hazardous materials",
+      "Includes phones, batteries, chargers, cables",
+      "Check campus IT department for drop-off locations"
+    ],
+    "icon": "🔌"
+  },
+  "hazardous": {
+    "name": "Hazardous Waste",
+    "recyclable": false,
+    "guidelines": [
+      "Do NOT place in regular bins",
+      "Contact campus facilities for disposal",
+      "Includes chemicals, paints, batteries",
+      "Requires special handling and disposal",
+      "Improper disposal harms the environment"
+    ],
+    "icon": "⚠️"
+  },
+  "mixed": {
+    "name": "Mixed Waste",
+    "recyclable": false,
+    "guidelines": [
+      "Separate materials before disposal",
+      "Sort into plastic, metal, glass, paper, and organic",
+      "Place sorted items in appropriate bins",
+      "Reduce mixed waste by sorting at the source",
+      "Ask campus staff for sorting guidance"
+    ],
+    "icon": "🗑️"
+  }
+}

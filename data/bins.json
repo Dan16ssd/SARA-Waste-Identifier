@@ -1,0 +1,8 @@
+[
+  { "id": "bin-1", "name": "Library Entrance",  "location": "Library",   "fillLevel": 30, "lastMaterial": null, "lastScanTime": null, "status": "ok" },
+  { "id": "bin-2", "name": "Cafeteria Main",    "location": "Cafeteria", "fillLevel": 75, "lastMaterial": null, "lastScanTime": null, "status": "warning" },
+  { "id": "bin-3", "name": "Gym Lobby",         "location": "Gym",       "fillLevel": 15, "lastMaterial": null, "lastScanTime": null, "status": "ok" },
+  { "id": "bin-4", "name": "Admin Building",    "location": "Admin",     "fillLevel": 60, "lastMaterial": null, "lastScanTime": null, "status": "warning" },
+  { "id": "bin-5", "name": "Science Block",     "location": "Science",   "fillLevel": 45, "lastMaterial": null, "lastScanTime": null, "status": "ok" },
+  { "id": "bin-6", "name": "Parking Lot",       "location": "Parking",   "fillLevel": 88, "lastMaterial": null, "lastScanTime": null, "status": "full" }
+]

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disposal & Recycling Guide — TrashScan</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/">Scanner</a>
+  <a href="/dashboard.html">Digital Twin</a>
+  <a href="/disposal.html" class="active">♻️ Disposal Guide</a>
+  <a href="/admin-login.html" style="margin-left:auto;">🔐 Admin</a>
+</nav>
+
+<div class="page" style="max-width:960px;">
+  <h1>♻️ Disposal &amp; Recycling Guide</h1>
+  <p style="color:var(--muted); margin-bottom:28px; font-size:0.95rem;">
+    Learn how to correctly dispose of each type of waste found on campus.
+    Click any material card to expand its instructions.
+  </p>
+
+  <!-- Quick-filter buttons -->
+  <div class="btn-row" id="filter-row" style="margin-bottom:24px; flex-wrap:wrap;"></div>
+
+  <!-- Material cards grid -->
+  <div id="guide-grid"></div>
+</div>
+
+<script src="/js/disposal.js"></script>
+</body>
+</html>

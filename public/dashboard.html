@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Digital Twin — Waste Management</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/">Scanner</a>
+  <a href="/dashboard.html" class="active">Digital Twin</a>
+  <a href="/disposal.html">♻️ Disposal Guide</a>
+  <a href="/admin-login.html" style="margin-left:auto;">🔐 Admin</a>
+</nav>
+
+<div class="page" style="max-width: 1100px;">
+  <h1>🏫 Campus Digital Twin — Waste Management</h1>
+
+  <div class="live-bar">
+    <span class="live-dot" id="live-dot"></span>
+    <span id="live-status">Connecting…</span>
+    &nbsp;|&nbsp; Last updated: <span id="last-updated">—</span>
+  </div>
+
+  <!-- Bin cards grid -->
+  <div id="bins-grid">
+    <p style="color: var(--muted); grid-column: 1/-1;">Loading bin data…</p>
+  </div>
+
+  <!-- Activity Log -->
+  <div class="card">
+    <h2 style="margin-bottom: 14px; color: var(--green-dark);">Activity Log</h2>
+    <div id="activity-log">
+      <p style="color: var(--muted); font-size:0.9rem;">No activity yet.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrashScan — Material Identifier</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/" class="active">Scanner</a>
+  <a href="/dashboard.html">Digital Twin</a>
+  <a href="/disposal.html">♻️ Disposal Guide</a>
+  <a href="/admin-login.html" style="margin-left:auto;">🔐 Admin</a>
+</nav>
+
+<div class="page">
+  <h1>Material Identifier</h1>
+
+  <div class="card">
+    <!-- Capture buttons -->
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-camera">📷 Use Camera</button>
+      <button class="btn btn-secondary" id="btn-upload">📁 Upload Image</button>
+      <input type="file" id="file-input" accept="image/*" />
+    </div>
+
+    <!-- Preview area -->
+    <div id="camera-wrap">
+      <video id="video" autoplay playsinline style="display:none;"></video>
+      <img id="preview" alt="Preview" style="display:none;" />
+      <p id="placeholder-text">No image selected. Use camera or upload a photo.</p>
+    </div>
+
+    <!-- Camera capture button (shown when live camera is active) -->
+    <div id="capture-row" style="display:none; margin-bottom:16px;">
+      <button class="btn btn-primary" id="btn-capture">📸 Capture Photo</button>
+    </div>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <!-- Bin selector -->
+    <div class="field-row">
+      <label for="bin-select">Bin Location:</label>
+      <select id="bin-select">
+        <option value="bin-1">Library Entrance</option>
+        <option value="bin-2">Cafeteria Main</option>
+        <option value="bin-3">Gym Lobby</option>
+        <option value="bin-4">Admin Building</option>
+        <option value="bin-5">Science Block</option>
+        <option value="bin-6">Parking Lot</option>
+      </select>
+    </div>
+
+    <!-- Scan button -->
+    <button class="btn btn-scan" id="btn-scan" disabled>🔍 Scan Material</button>
+    <div class="spinner" id="spinner" style="margin-top:14px;"></div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- Result card — always visible -->
+  <div class="card" id="result-card">
+    <h2 style="margin-bottom:16px; color: var(--green-dark);">Scan Result</h2>
+    <div class="result-grid">
+      <span class="result-label">Object</span>
+      <span class="result-value" id="res-object">—</span>
+
+      <span class="result-label">Material</span>
+      <span class="result-value" id="res-material">—</span>
+
+      <span class="result-label">Category</span>
+      <span class="result-value" id="res-category">—</span>
+
+      <span class="result-label">Recyclable</span>
+      <span class="result-value" id="res-recyclable">—</span>
+
+      <span class="result-label">Disposal</span>
+      <span class="result-value" id="res-disposal">—</span>
+    </div>
+
+    <!-- Recycling Guidelines — always visible, populated after scan -->
+    <div id="res-guidelines" style="margin-top:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <strong style="color:var(--green-dark); font-size:1rem;">♻️ Recycling Guidelines</strong>
+        <a id="res-guide-link" href="/disposal.html" target="_blank"
+          style="font-size:0.85rem; color:var(--green-mid); text-decoration:none; font-weight:600;">
+          View Full Disposal Guide →
+        </a>
+      </div>
+      <ul id="res-guidelines-list" style="margin-top:10px; padding-left:20px; font-size:0.9rem; color:var(--text); line-height:1.7;">
+        <li style="color:var(--muted);">Scan an item to see recycling instructions.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Scan Log -->
+  <div class="card">
+    <h2 style="margin-bottom:14px; color:var(--green-dark);">📋 Scan Log</h2>
+    <div id="scan-log">
+      <p style="color:var(--muted); font-size:0.9rem;">No scans yet this session.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/scanner.js"></script>
+</body>
+</html>

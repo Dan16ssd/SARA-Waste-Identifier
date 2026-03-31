@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — TrashScan</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/">Scanner</a>
+  <a href="/dashboard.html">Digital Twin</a>
+  <a href="#" id="btn-logout" style="margin-left:auto; cursor:pointer;">🚪 Logout</a>
+</nav>
+
+<div class="page" style="max-width: 1000px;">
+  <h1>🏫 Admin Control Panel</h1>
+
+  <!-- Manage bins -->
+  <div class="card">
+    <h2 style="margin-bottom:18px; color:var(--green-dark);">Manage Campus Bins</h2>
+    <div id="admin-bins-list">
+      <p style="color:var(--muted);">Loading bins…</p>
+    </div>
+
+    <!-- Add new bin form -->
+    <details style="margin-top:20px;">
+      <summary style="cursor:pointer; font-weight:600; color:var(--green-mid);">➕ Add New Bin</summary>
+      <div class="card" style="margin-top:14px; background:var(--green-pale);">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:4px;">Bin ID</label>
+            <input id="new-bin-id" type="text" placeholder="e.g. bin-7"
+              style="width:100%; padding:8px 12px; border:1px solid #cde; border-radius:8px;" />
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:4px;">Name</label>
+            <input id="new-bin-name" type="text" placeholder="e.g. Sports Field"
+              style="width:100%; padding:8px 12px; border:1px solid #cde; border-radius:8px;" />
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:4px;">Location</label>
+            <input id="new-bin-location" type="text" placeholder="e.g. Field"
+              style="width:100%; padding:8px 12px; border:1px solid #cde; border-radius:8px;" />
+          </div>
+          <button class="btn btn-primary" id="btn-add-bin">Add</button>
+        </div>
+        <div class="error-msg" id="add-bin-error" style="margin-top:8px;"></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- Analytics + scan history -->
+  <div class="card">
+    <h2 style="margin-bottom:18px; color:var(--green-dark);">Scan History &amp; Analytics</h2>
+    <div id="analytics-summary" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-bottom:18px;">
+      <div class="stat-box"><div class="stat-val" id="stat-total">—</div><div class="stat-label">Scans Today</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-top-material">—</div><div class="stat-label">Top Material</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-capacity">—</div><div class="stat-label">Bins at Capacity</div></div>
+    </div>
+
+    <h3 style="margin-bottom:10px; font-size:1rem; color:var(--green-dark);">Recent Scans</h3>
+    <div id="scan-history-list" style="max-height:260px; overflow-y:auto; font-size:0.88rem;">
+      <p style="color:var(--muted);">No history yet.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/admin-panel.js"></script>
+</body>
+</html>
