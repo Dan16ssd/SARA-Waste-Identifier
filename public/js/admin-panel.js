@@ -9,7 +9,7 @@
   const authHeaders = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
 
   // ── Socket.io ──────────────────────────────────────────────────────────────
-  const socket = io({ query: { token } });
+  const socket = io({ transports: ['websocket'], query: { token } });
 
   socket.on('bin-updated', () => {
     // Refresh bins list and logs when any update occurs

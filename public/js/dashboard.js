@@ -5,7 +5,7 @@
   const liveStatus  = document.getElementById('live-status');
   const lastUpdated = document.getElementById('last-updated');
 
-  const socket = io();
+  const socket = io({ transports: ['websocket'] });
 
   socket.on('connect', () => {
     liveDot.classList.add('connected');

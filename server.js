@@ -10,7 +10,7 @@ const jwt    = require('jsonwebtoken');
 
 const app    = express();
 const server = http.createServer(app);
-const io     = new Server(server);
+const io     = new Server(server, { transports: ['websocket'] });
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
