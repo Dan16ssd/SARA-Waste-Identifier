@@ -81,6 +81,14 @@ io.on('connection', (socket) => {
   });
 });
 
+// ── Error handlers ────────────────────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+});
+
 // ── Start server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
