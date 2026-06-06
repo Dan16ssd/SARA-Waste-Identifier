@@ -8,6 +8,11 @@
   let currentPeriod       = 'today';
   let viewMode            = 'markers';
 
+  // ── Org context (from localStorage or URL param) ───────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  const orgId     = urlParams.get('org') || localStorage.getItem('sara_org_id') || null;
+  const orgName   = localStorage.getItem('sara_org_name') || null;
+
   // ── Leaflet refs ──────────────────────────────────────────────────────────────
   let leafletMap, clusterGroup, heatLayer, trailLayer;
   let counterEl, lastScanEl;
@@ -15,24 +20,13 @@
   // ── Chart ─────────────────────────────────────────────────────────────────────
   let pieChart = null;
 
-  // ── Heatmap data buffer (survives layer hide/show) ────────────────────────────
+  // ── Heatmap data buffer ───────────────────────────────────────────────────────
   let heatData = [];
 
-  // ── Scan trails: user_id → [{lat,lng,ts}] (max 5) ────────────────────────────
+  // ── Scan trails: user_id → [{lat,lng,ts}] ─────────────────────────────────────
   const userTrails = {};
 
-  // ── Fallback coords when GPS is null ─────────────────────────────────────────
-  const LOCATION_COORDS = {
-    'Engineering Cafe': [17.9651, 102.6220],
-    'Main Library':     [17.9644, 102.6214],
-    'Science Building': [17.9638, 102.6228],
-    'Admin Block':      [17.9658, 102.6208],
-  };
-  function jitter(v) { return v + (Math.random() - 0.5) * 0.0003; }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Colour map
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Colour map ────────────────────────────────────────────────────────────────
   function colourFor(cat) {
     const k = (cat || '').toLowerCase();
     if (k.includes('plastic'))                              return '#e63946';
@@ -45,15 +39,12 @@
     return '#6c757d';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Firebase init
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Firebase init ──────────────────────────────────────────────────────────────
   async function initFirebase() {
     try {
       const resp = await fetch('/api/firebase-config');
       const cfg  = await resp.json();
       if (!cfg.configured || !cfg.projectId || cfg.projectId === 'your-project-id') return false;
-
       if (!firebase.apps.length) {
         firebase.initializeApp({ apiKey: cfg.apiKey, projectId: cfg.projectId });
       }
@@ -65,41 +56,51 @@
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Time filter
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Time filter ───────────────────────────────────────────────────────────────
   function periodStart() {
     const now = new Date();
-    if (currentPeriod === 'today') {
-      const d = new Date(now); d.setHours(0, 0, 0, 0); return d;
-    }
-    if (currentPeriod === 'week') {
-      const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-    }
-    const d = new Date(now); d.setDate(d.getDate() - 30); return d;
+    if (currentPeriod === 'today') { const d = new Date(now); d.setHours(0,0,0,0); return d; }
+    if (currentPeriod === 'week')  { const d = new Date(now); d.setDate(d.getDate()-7); return d; }
+    const d = new Date(now); d.setDate(d.getDate()-30); return d;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Map init
-  // ─────────────────────────────────────────────────────────────────────────────
-  function initMap() {
+  // ── Map init ──────────────────────────────────────────────────────────────────
+  async function initMap() {
     if (leafletMap) return;
 
-    // Default centre: NUOL campus, Vientiane
-    leafletMap = L.map('map').setView([17.9644, 102.6214], 16);
+    // Default world view; will be overridden by org location or scan data
+    let centerLat = 20, centerLng = 0, zoom = 2;
+
+    if (orgId) {
+      try {
+        const resp = await fetch('/api/orgs/' + orgId);
+        if (resp.ok) {
+          const org = await resp.json();
+          if (org.location && org.location.lat && org.location.lng) {
+            centerLat = org.location.lat;
+            centerLng = org.location.lng;
+            zoom      = 15;
+          }
+          // Update page title with org name
+          const h1 = document.querySelector('h1');
+          if (h1 && org.name) h1.textContent = '🗺️ ' + org.name + ' — Waste Intelligence';
+        }
+      } catch { /* fall back to world view */ }
+    }
+
+    leafletMap = L.map('map').setView([centerLat, centerLng], zoom);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(leafletMap);
 
-    // ── Cluster group ─────────────────────────────────────────────────────────
     clusterGroup = L.markerClusterGroup({
       maxClusterRadius: 50,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       iconCreateFunction: (cluster) => {
-        const n = cluster.getChildCount();
+        const n    = cluster.getChildCount();
         const size = n > 50 ? 44 : n > 10 ? 38 : 32;
         return L.divIcon({
           html: '<div class="cluster-dot" style="width:' + size + 'px;height:' + size + 'px;">' + n + '</div>',
@@ -110,17 +111,14 @@
     });
     clusterGroup.addTo(leafletMap);
 
-    // ── Heatmap layer (hidden initially) ─────────────────────────────────────
     heatLayer = L.heatLayer([], { radius: 40, blur: 30, max: 1, minOpacity: 0.4, gradient: {
       0.3: '#74c69d',
       0.6: '#f4a261',
       1.0: '#e63946',
     }});
 
-    // ── Trail layer ───────────────────────────────────────────────────────────
     trailLayer = L.layerGroup().addTo(leafletMap);
 
-    // ── Live counter Leaflet control ──────────────────────────────────────────
     const LiveCtrl = L.Control.extend({
       options: { position: 'topright' },
       onAdd() {
@@ -138,23 +136,17 @@
     lastScanEl = document.getElementById('live-last-scan');
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Marker factory
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Marker factory ────────────────────────────────────────────────────────────
   function createMarker(scan, isNew) {
     if (!scan.latitude || !scan.longitude) return null;
-
     const colour  = colourFor(scan.category);
     const cls     = isNew ? 'scan-dot new-marker' : 'scan-dot';
     const opacity = scan.approx ? '0.5' : '1';
     const icon    = L.divIcon({
       className: '',
       html: '<div class="' + cls + '" style="background:' + colour + ';opacity:' + opacity + ';"></div>',
-      iconSize:   [14, 14],
-      iconAnchor: [7, 7],
-      popupAnchor:[0, -7],
+      iconSize: [14,14], iconAnchor: [7,7], popupAnchor: [0,-7],
     });
-
     const marker = L.marker([scan.latitude, scan.longitude], { icon });
     marker.bindPopup(
       '<strong>' + escHtml(scan.item_name || scan.category) + '</strong><br/>' +
@@ -163,22 +155,17 @@
       (scan.gps_accuracy ? '<br/>Accuracy: ±' + Math.round(scan.gps_accuracy) + 'm' : '') + '<br/>' +
       '+' + (scan.regen_points || 10) + ' ReGen pts'
     );
-
     return marker;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Scan trail
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Scan trails ───────────────────────────────────────────────────────────────
   function pushTrail(scan) {
     if (!scan.latitude || !scan.longitude) return;
     const uid = scan.user_id || 'anon';
     if (!userTrails[uid]) userTrails[uid] = [];
-    userTrails[uid].push({
-      lat: scan.latitude, lng: scan.longitude,
-      ts: scan.timestamp instanceof Date ? scan.timestamp : new Date(scan.timestamp || 0),
-    });
-    userTrails[uid].sort((a, b) => a.ts - b.ts);
+    userTrails[uid].push({ lat: scan.latitude, lng: scan.longitude,
+      ts: scan.timestamp instanceof Date ? scan.timestamp : new Date(scan.timestamp || 0) });
+    userTrails[uid].sort((a,b) => a.ts - b.ts);
     if (userTrails[uid].length > 5) userTrails[uid] = userTrails[uid].slice(-5);
   }
 
@@ -186,9 +173,8 @@
     trailLayer.clearLayers();
     Object.values(userTrails).forEach((pts) => {
       if (pts.length < 2) return;
-      L.polyline(pts.map(p => [p.lat, p.lng]), {
-        color: '#74c69d', weight: 2, opacity: 0.5, dashArray: '5 5',
-      }).addTo(trailLayer);
+      L.polyline(pts.map(p => [p.lat, p.lng]), { color: '#74c69d', weight: 2, opacity: 0.5, dashArray: '5 5' })
+        .addTo(trailLayer);
     });
   }
 
@@ -197,15 +183,12 @@
     trailLayer.clearLayers();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // View mode toggle: Markers ↔ Heatmap
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── View mode toggle ──────────────────────────────────────────────────────────
   function setViewMode(mode) {
     viewMode = mode;
     document.querySelectorAll('.map-toggle-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.mode === mode)
     );
-
     if (mode === 'markers') {
       leafletMap.addLayer(clusterGroup);
       leafletMap.addLayer(trailLayer);
@@ -218,55 +201,44 @@
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Live counter
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Live counter ──────────────────────────────────────────────────────────────
   function updateCounter(latestScan) {
-    if (counterEl)  counterEl.textContent = allScans.length;
-    if (lastScanEl) {
-      if (latestScan) {
-        const ts = latestScan.timestamp instanceof Date
-          ? latestScan.timestamp : new Date(latestScan.timestamp || 0);
-        lastScanEl.textContent = 'Last: ' + timeAgo(ts);
-      }
+    if (counterEl) counterEl.textContent = allScans.length;
+    if (lastScanEl && latestScan) {
+      const ts = latestScan.timestamp instanceof Date
+        ? latestScan.timestamp : new Date(latestScan.timestamp || 0);
+      lastScanEl.textContent = 'Last: ' + timeAgo(ts);
     }
   }
 
   function timeAgo(date) {
     const s = Math.floor((Date.now() - date.getTime()) / 1000);
     if (s < 60)   return s + 's ago';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    return Math.floor(s / 3600) + 'h ago';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    return Math.floor(s/3600) + 'h ago';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Stats + Pie + Hotspot
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Stats + Pie + Hotspot ──────────────────────────────────────────────────────
   function renderStats() {
     document.getElementById('stat-scans').textContent = allScans.length;
-
-    const totalPts = allScans.reduce((a, s) => a + (Number(s.regen_points) || 10), 0);
+    const totalPts = allScans.reduce((a,s) => a + (Number(s.regen_points)||10), 0);
     document.getElementById('stat-points').textContent = totalPts + ' pts';
-
     const cats = {};
-    allScans.forEach(s => { const c = s.category || 'Other'; cats[c] = (cats[c] || 0) + 1; });
-    const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+    allScans.forEach(s => { const c = s.category||'Other'; cats[c]=(cats[c]||0)+1; });
+    const topCat = Object.entries(cats).sort((a,b) => b[1]-a[1])[0];
     document.getElementById('stat-top').textContent = topCat ? topCat[0] : '—';
-
     const locs = new Set(allScans.map(s => s.location_name).filter(Boolean));
     document.getElementById('stat-locations').textContent = locs.size || '—';
-
     renderPie(cats);
     renderHotspot();
   }
 
   function renderPie(cats) {
-    const labels = Object.keys(cats);
-    const data   = labels.map(l => cats[l]);
-    const colors = labels.map(l => colourFor(l));
+    const labels  = Object.keys(cats);
+    const data    = labels.map(l => cats[l]);
+    const colors  = labels.map(l => colourFor(l));
     const canvasEl = document.getElementById('pie-chart');
     const emptyEl  = document.getElementById('chart-empty');
-
     if (!labels.length) {
       canvasEl.style.display = 'none';
       emptyEl.style.display  = 'block';
@@ -280,8 +252,7 @@
       type: 'doughnut',
       data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }] },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
+        responsive: true, maintainAspectRatio: true,
         plugins: {
           legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
           tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' scans' } },
@@ -293,24 +264,19 @@
   function renderHotspot() {
     const card = document.getElementById('hotspot-card');
     const text = document.getElementById('hotspot-text');
-    const locs = {};
-    allScans.forEach(s => { const l = s.location_name || 'Unknown'; locs[l] = (locs[l] || 0) + 1; });
-    const sorted = Object.entries(locs).sort((a, b) => b[1] - a[1]);
+    const locs  = {};
+    allScans.forEach(s => { const l = s.location_name||'Unknown'; locs[l]=(locs[l]||0)+1; });
+    const sorted = Object.entries(locs).sort((a,b) => b[1]-a[1]);
     if (!sorted[0] || sorted[0][1] < 2) { card.style.display = 'none'; return; }
-    const label = { today: 'today', week: 'this week', month: 'this month' }[currentPeriod];
+    const label = { today:'today', week:'this week', month:'this month' }[currentPeriod];
     card.style.display = 'flex';
     text.textContent = sorted[0][0] + ' — ' + sorted[0][1] + ' scans ' + label;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Real-time Firestore listener
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Firestore listener (org-scoped or public) ──────────────────────────────────
   function subscribe() {
     if (unsubscribeListener) unsubscribeListener();
-
-    // Clear everything
-    allScans  = [];
-    heatData  = [];
+    allScans = []; heatData = [];
     clusterGroup.clearLayers();
     clearTrails();
     if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs([]);
@@ -319,21 +285,35 @@
     let initialDone = false;
     const batch     = [];
 
-    const q = db.collection('scans')
+    // Filter by org_id — null means anonymous/public scans
+    let q = db.collection('scans')
       .where('timestamp', '>=', since)
       .orderBy('timestamp', 'desc')
       .limit(500);
+
+    if (orgId) {
+      q = db.collection('scans')
+        .where('org_id', '==', orgId)
+        .where('timestamp', '>=', since)
+        .orderBy('timestamp', 'desc')
+        .limit(500);
+    } else {
+      // Public mode: show scans without an org
+      q = db.collection('scans')
+        .where('org_id', '==', null)
+        .where('timestamp', '>=', since)
+        .orderBy('timestamp', 'desc')
+        .limit(500);
+    }
 
     unsubscribeListener = q.onSnapshot(
       (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           if (change.type !== 'added') return;
           const scan = parseScan(change.doc.data());
-
           if (!initialDone) {
             batch.push(scan);
           } else {
-            // ── LIVE NEW SCAN ── animate it ──────────────────────────────────
             allScans.push(scan);
             if (scan.latitude && scan.longitude) {
               heatData.push([scan.latitude, scan.longitude, 1]);
@@ -342,7 +322,6 @@
             const marker = createMarker(scan, true);
             if (marker) {
               clusterGroup.addLayer(marker);
-              // Pan to new scan
               leafletMap.panTo([scan.latitude, scan.longitude], { animate: true });
             }
             pushTrail(scan);
@@ -355,8 +334,6 @@
         if (!initialDone) {
           initialDone = true;
           allScans = batch.slice();
-
-          // Build trails + heat data from initial batch
           batch.forEach(scan => {
             const marker = createMarker(scan, false);
             if (marker) clusterGroup.addLayer(marker);
@@ -367,11 +344,8 @@
           });
           redrawTrails();
           if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs(heatData);
-
-          // Fit map to all markers
           const coords = allScans.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
-          if (coords.length) leafletMap.fitBounds(coords, { padding: [40, 40], maxZoom: 18 });
-
+          if (coords.length) leafletMap.fitBounds(coords, { padding: [40,40], maxZoom: 18 });
           renderStats();
           updateCounter(allScans[0] || null);
         }
@@ -379,34 +353,28 @@
       (err) => {
         console.error('onSnapshot error:', err.message);
         if (err.code === 'permission-denied') {
-          document.getElementById('firebase-warning').style.display = 'block';
-          document.getElementById('firebase-warning').querySelector('p').textContent =
-            'Firestore permission denied. Check your security rules (allow read: if true for /scans).';
+          const warn = document.getElementById('firebase-warning');
+          if (warn) {
+            warn.style.display = 'block';
+            warn.querySelector('p').textContent =
+              'Firestore permission denied. Check your security rules.';
+          }
         }
       }
     );
   }
 
   function parseScan(raw) {
-    const ts = raw.timestamp && raw.timestamp.toDate ? raw.timestamp.toDate() : new Date(raw.timestamp || 0);
-
-    let lat = typeof raw.latitude  === 'number' ? raw.latitude  : null;
-    let lng = typeof raw.longitude === 'number' ? raw.longitude : null;
-
-    // Fall back to named-location coords when GPS wasn't captured
-    if ((lat === null || lng === null) && LOCATION_COORDS[raw.location_name]) {
-      [lat, lng] = LOCATION_COORDS[raw.location_name];
-      lat = jitter(lat);
-      lng = jitter(lng);
-    }
-
+    const ts  = raw.timestamp && raw.timestamp.toDate ? raw.timestamp.toDate() : new Date(raw.timestamp || 0);
+    const lat = typeof raw.latitude  === 'number' ? raw.latitude  : null;
+    const lng = typeof raw.longitude === 'number' ? raw.longitude : null;
     return {
       item_name:     raw.item_name     || '',
       category:      raw.category      || '',
       location_name: raw.location_name || '',
       latitude:      lat,
       longitude:     lng,
-      approx:        typeof raw.latitude !== 'number', // flag for approx marker
+      approx:        false,
       gps_accuracy:  raw.gps_accuracy  || null,
       regen_points:  raw.regen_points  || 10,
       user_id:       raw.user_id       || 'anon',
@@ -414,25 +382,26 @@
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────────────────────────────────────
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Init
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Init ──────────────────────────────────────────────────────────────────────
   async function init() {
-    // Points badge from localStorage
-    const pts = parseInt(localStorage.getItem('sara_points') || '0', 10);
+    const pts   = parseInt(localStorage.getItem('sara_points') || '0', 10);
     const badge = document.getElementById('points-badge');
     if (badge) badge.textContent = '🌱 ' + pts + ' pts';
 
-    initMap();
+    await initMap();
 
-    // Tab listeners
+    // Show org context in header
+    const h1 = document.querySelector('h1');
+    if (orgId && orgName && h1 && !h1.textContent.includes(orgName)) {
+      h1.textContent = '🗺️ ' + orgName + ' — Waste Intelligence';
+    } else if (!orgId && h1) {
+      h1.textContent = '🌍 Global Public Scan Map';
+    }
+
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -442,14 +411,14 @@
       });
     });
 
-    // View mode toggle
     document.querySelectorAll('.map-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => setViewMode(btn.dataset.mode));
     });
 
     const ok = await initFirebase();
     if (!ok) {
-      document.getElementById('firebase-warning').style.display = 'block';
+      const warn = document.getElementById('firebase-warning');
+      if (warn) warn.style.display = 'block';
       return;
     }
 

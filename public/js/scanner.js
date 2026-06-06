@@ -26,71 +26,72 @@
 
   updatePointsBadge(getStoredPoints());
 
-  // ── Campus geofencing ─────────────────────────────────────────────────────────
-  const CAMPUS_ZONES = [
-    { name: 'Engineering Cafe', lat: 17.9651, lng: 102.6220, radius: 60 },
-    { name: 'Main Library',     lat: 17.9644, lng: 102.6214, radius: 60 },
-    { name: 'Science Building', lat: 17.9638, lng: 102.6228, radius: 60 },
-    { name: 'Admin Block',      lat: 17.9658, lng: 102.6208, radius: 60 },
-  ];
+  // ── Org context ───────────────────────────────────────────────────────────────
+  const orgId   = localStorage.getItem('sara_org_id')   || null;
+  const orgName = localStorage.getItem('sara_org_name') || null;
 
-  function haversine(lat1, lng1, lat2, lng2) {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
+  const orgBadge  = document.getElementById('org-badge');
+  const navJoin   = document.getElementById('nav-join');
 
-  function detectZone(lat, lng) {
-    let best = null, bestDist = Infinity;
-    for (const z of CAMPUS_ZONES) {
-      const d = haversine(lat, lng, z.lat, z.lng);
-      if (d <= z.radius && d < bestDist) { best = z; bestDist = d; }
-    }
-    return best;
+  if (orgId && orgName && orgBadge) {
+    orgBadge.textContent   = '📍 ' + orgName;
+    orgBadge.style.display = 'inline-flex';
+    if (navJoin) navJoin.style.display = 'none';
   }
 
   // ── GPS ───────────────────────────────────────────────────────────────────────
   let gpsData = { lat: null, lng: null, accuracy: null };
 
+  async function reverseGeocode(lat, lng) {
+    try {
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const addr = data.address || {};
+      return addr.building || addr.amenity || addr.suburb || addr.city_district ||
+             addr.town || addr.city || addr.county || addr.state || null;
+    } catch {
+      return null;
+    }
+  }
+
   async function tryGPS() {
-    const statusEl = document.getElementById('gps-status');
-    if (statusEl) statusEl.textContent = 'Detecting GPS...';
+    const statusEl   = document.getElementById('gps-status');
+    const locationEl = document.getElementById('location-input');
+    if (statusEl) statusEl.textContent = 'Detecting GPS…';
 
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        if (statusEl) statusEl.textContent = 'GPS unavailable — using selected location.';
+        if (statusEl) statusEl.textContent = 'GPS unavailable — enter location manually.';
         resolve(null);
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           const acc = pos.coords.accuracy;
           gpsData = { lat, lng, accuracy: acc };
 
-          const zone = detectZone(lat, lng);
-          if (zone && locationSelect) {
-            for (let i = 0; i < locationSelect.options.length; i++) {
-              if (locationSelect.options[i].value === zone.name) {
-                locationSelect.selectedIndex = i;
-                break;
-              }
+          if (statusEl) statusEl.textContent = 'GPS: ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + ' (±' + Math.round(acc) + 'm)';
+
+          // Auto-fill location name via reverse geocoding
+          if (locationEl && !locationEl.value) {
+            const placeName = await reverseGeocode(lat, lng);
+            if (placeName) {
+              locationEl.value = placeName;
+              if (statusEl) statusEl.textContent = 'Auto-detected: ' + placeName + ' (±' + Math.round(acc) + 'm)';
             }
-            if (statusEl) statusEl.textContent = 'Auto-detected: ' + zone.name + ' (±' + Math.round(acc) + 'm)';
-          } else if (acc > 50) {
-            if (statusEl) statusEl.textContent = 'GPS signal weak (±' + Math.round(acc) + 'm) — please select location manually.';
-          } else {
-            if (statusEl) statusEl.textContent = 'GPS: ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + ' (±' + Math.round(acc) + 'm)';
           }
+
           resolve(gpsData);
         },
         () => {
           gpsData = { lat: null, lng: null, accuracy: null };
-          if (statusEl) statusEl.textContent = 'GPS denied — using selected location name only.';
+          if (statusEl) statusEl.textContent = 'GPS denied — enter location manually.';
           resolve(null);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -99,21 +100,21 @@
   }
 
   // ── DOM refs ──────────────────────────────────────────────────────────────────
-  const video          = document.getElementById('video');
-  const preview        = document.getElementById('preview');
-  const placeholder    = document.getElementById('placeholder-text');
-  const canvas         = document.getElementById('canvas');
-  const arScanner      = document.getElementById('ar-scanner');
-  const arOverlay      = document.getElementById('ar-overlay');
-  const detectStatus   = document.getElementById('detect-status');
-  const fileInput      = document.getElementById('file-input');
-  const btnCamera      = document.getElementById('btn-camera');
-  const btnUpload      = document.getElementById('btn-upload');
-  const btnScan        = document.getElementById('btn-scan');
-  const locationSelect = document.getElementById('location-select');
-  const spinner        = document.getElementById('spinner');
-  const errorMsg       = document.getElementById('error-msg');
-  const scanCards      = document.getElementById('scan-cards');
+  const video        = document.getElementById('video');
+  const preview      = document.getElementById('preview');
+  const placeholder  = document.getElementById('placeholder-text');
+  const canvas       = document.getElementById('canvas');
+  const arScanner    = document.getElementById('ar-scanner');
+  const arOverlay    = document.getElementById('ar-overlay');
+  const detectStatus = document.getElementById('detect-status');
+  const fileInput    = document.getElementById('file-input');
+  const btnCamera    = document.getElementById('btn-camera');
+  const btnUpload    = document.getElementById('btn-upload');
+  const btnScan      = document.getElementById('btn-scan');
+  const locationInput = document.getElementById('location-input');
+  const spinner      = document.getElementById('spinner');
+  const errorMsg     = document.getElementById('error-msg');
+  const scanCards    = document.getElementById('scan-cards');
 
   let currentImageBase64 = null;
   let currentMimeType    = 'image/jpeg';
@@ -121,7 +122,7 @@
   let cameraActive       = false;
   let frozenFrame        = null;
 
-  // ── AR auto-detection loop ────────────────────────────────────────────────
+  // ── AR auto-detection loop ────────────────────────────────────────────────────
   let arTimer     = null;
   let arBusy      = false;
   let arLastItems = [];
@@ -146,7 +147,6 @@
     if (!cameraActive || arBusy || !video.videoWidth) return;
     arBusy = true;
 
-    // Keep last boxes visible while new request is in-flight
     if (arLastItems.length > 0) {
       const m = getLetterboxMetrics();
       if (m) {
@@ -161,7 +161,6 @@
       }
     }
 
-    // Scanning indicator
     detectStatus.textContent = 'Scanning…';
     detectStatus.classList.add('scanning');
     detectStatus.style.display = 'block';
@@ -190,7 +189,6 @@
       const items = (data.items || []).filter(i => i.box_2d);
       if (!cameraActive) return;
 
-      // Draw with letterbox-corrected coordinates
       const m = getLetterboxMetrics();
       if (!m) return;
       arOverlay.width  = m.cw;
@@ -295,9 +293,6 @@
     return '#40916c';
   }
 
-  // ── Draw a single bounding box (box_2d = [ymin,xmin,ymax,xmax] 0-1000) ───────
-  // renderW/renderH/offsetX/offsetY: optional — used by AR overlay to correct for
-  // object-fit:contain letterboxing. Omit for static canvas (falls back to canvas size).
   function drawBox(ctx, box_2d, color, label, renderW, renderH, offsetX, offsetY) {
     if (!box_2d || box_2d.length < 4) return;
     const [ymin, xmin, ymax, xmax] = box_2d;
@@ -321,8 +316,6 @@
     const textW  = ctx.measureText(label).width;
     const labelH = fontSize + 10;
     const labelY = y > labelH ? y : y + h + labelH;
-
-    // Clamp label inside canvas
     const clampedLabelY = Math.min(labelY, H - 4);
 
     ctx.fillStyle = color;
@@ -331,9 +324,6 @@
     ctx.fillText(label, x + 7, clampedLabelY - 6);
   }
 
-  // ── Letterbox geometry helper ─────────────────────────────────────────────────
-  // Returns the pixel region inside #camera-wrap where the video content is
-  // actually rendered, accounting for object-fit:contain black bars.
   function getLetterboxMetrics() {
     const cw = video.clientWidth;
     const ch = video.clientHeight;
@@ -348,10 +338,8 @@
     return { cw, ch, renderedW, renderedH, offsetX, offsetY };
   }
 
-  // ── Crop an item from the frozen frame into a new canvas ──────────────────────
   function cropItem(box_2d) {
     const cropCanvas = document.createElement('canvas');
-
     if (!box_2d || !frozenFrame) {
       cropCanvas.width  = canvas.width;
       cropCanvas.height = canvas.height;
@@ -359,47 +347,35 @@
       ctx2.putImageData(frozenFrame || ctx2.createImageData(1, 1), 0, 0);
       return cropCanvas;
     }
-
     const [ymin, xmin, ymax, xmax] = box_2d;
     const W = canvas.width, H = canvas.height;
-    const pad = 0.05; // 5% padding
-
+    const pad = 0.05;
     const x0 = Math.max(0, (xmin / 1000 - pad) * W);
     const y0 = Math.max(0, (ymin / 1000 - pad) * H);
     const x1 = Math.min(W, (xmax / 1000 + pad) * W);
     const y1 = Math.min(H, (ymax / 1000 + pad) * H);
     const cw  = x1 - x0;
     const ch  = y1 - y0;
-
     cropCanvas.width  = cw;
     cropCanvas.height = ch;
-    const ctx2 = cropCanvas.getContext('2d');
-    ctx2.drawImage(canvas, x0, y0, cw, ch, 0, 0, cw, ch);
+    cropCanvas.getContext('2d').drawImage(canvas, x0, y0, cw, ch, 0, 0, cw, ch);
     return cropCanvas;
   }
 
-  // ── Build TikTok-style result cards ──────────────────────────────────────────
   function buildCards(items) {
     if (!scanCards) return;
     clearCards();
     if (!items || items.length === 0) return;
-
     scanCards.style.display = 'flex';
-
     items.forEach((item, idx) => {
-      const color   = getCategoryColor(item.material);
-      const recycled = item.recyclable;
-      const badgeClass = recycled ? 'card-badge-yes' : 'card-badge-no';
-      const badgeText  = recycled ? 'Recyclable' : 'Non-recyclable';
-
-      const card = document.createElement('div');
-      card.className = 'scan-item-card';
+      const color      = getCategoryColor(item.material);
+      const badgeClass = item.recyclable ? 'card-badge-yes' : 'card-badge-no';
+      const badgeText  = item.recyclable ? 'Recyclable' : 'Non-recyclable';
+      const card       = document.createElement('div');
+      card.className   = 'scan-item-card';
       card.style.setProperty('--accent', color);
-
-      // Crop thumbnail
       const cropCv = cropItem(item.box_2d);
       cropCv.className = 'scan-item-thumb';
-
       const body = document.createElement('div');
       body.className = 'scan-item-body';
       body.innerHTML =
@@ -407,17 +383,11 @@
         `<div class="scan-item-material" style="color:${color}">${escHtml(item.material)}</div>` +
         `<span class="scan-item-badge ${badgeClass}">${badgeText}</span>` +
         `<div class="scan-item-action">${escHtml(item.disposalInstructions || '')}</div>`;
-
       card.appendChild(cropCv);
       card.appendChild(body);
-
-      // Clicking a card scrolls to the result card with that item's data
       card.addEventListener('click', () => showResult(item, idx));
-
       scanCards.appendChild(card);
     });
-
-    // Auto-show the first item in the result card
     showResult(items[0], 0);
   }
 
@@ -450,9 +420,9 @@
     clearCards();
     await tryGPS();
 
-    const locationName = locationSelect ? locationSelect.value : 'Unknown';
+    const locationName = (locationInput && locationInput.value.trim()) || 'Unknown';
 
-    detectStatus.textContent   = 'Analyzing items...';
+    detectStatus.textContent   = 'Analyzing items…';
     detectStatus.style.display = 'block';
 
     try {
@@ -468,6 +438,7 @@
           gps_accuracy:  gpsData.accuracy,
           location_name: locationName,
           user_id:       getUserId(),
+          org_id:        orgId,
         }),
       });
 
@@ -476,24 +447,18 @@
 
       const items = data.items || [];
 
-      // Draw all bounding boxes on the canvas
       if (items.length > 0) {
         const ctx = canvas.getContext('2d');
         if (frozenFrame) ctx.putImageData(frozenFrame, 0, 0);
         items.forEach((item) => {
-          const color = getCategoryColor(item.material);
-          drawBox(ctx, item.box_2d, color, item.label || item.object);
+          drawBox(ctx, item.box_2d, getCategoryColor(item.material), item.label || item.object);
         });
       }
 
       detectStatus.style.display = 'none';
-
       buildCards(items);
-
-      // Log all items
       items.forEach((item) => addLogEntry(item, locationName));
 
-      // Update points
       let newTotal;
       if (data.total_points !== null && data.total_points !== undefined) {
         newTotal = data.total_points;
@@ -528,12 +493,9 @@
   function showResult(item, idx) {
     const card = document.getElementById('result-card');
     card.classList.add('visible');
-
-    // Highlight the active scan card
     if (scanCards) {
       Array.from(scanCards.children).forEach((c, i) => c.classList.toggle('active', i === idx));
     }
-
     const icon = item.icon ? item.icon + ' ' : '';
     document.getElementById('res-object').textContent   = item.object   || '—';
     document.getElementById('res-material').textContent = icon + (item.material || '—');
@@ -557,7 +519,7 @@
     }
 
     const materialKey = (item.material || '').toLowerCase().replace(/[^a-z]/g, '');
-    const guideLink = document.getElementById('res-guide-link');
+    const guideLink   = document.getElementById('res-guide-link');
     if (guideLink) guideLink.href = `/disposal.html#${materialKey}`;
 
     const earnedEl   = document.getElementById('points-earned');
@@ -580,11 +542,9 @@
     const logEl = document.getElementById('scan-log');
     const ph    = logEl.querySelector('p');
     if (ph) ph.remove();
-
     const recycled = item.recyclable ? 'Recyclable' : 'Not recyclable';
     const time     = new Date().toLocaleTimeString();
-
-    const entry = document.createElement('div');
+    const entry    = document.createElement('div');
     entry.className = 'log-entry';
     entry.innerHTML =
       '<span class="log-time">' + time + '</span>' +

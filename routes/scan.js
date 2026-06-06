@@ -3,16 +3,12 @@
 const express = require('express');
 const router  = express.Router();
 const { analyzeTrashImage } = require('../utils/gemini-lens');
-const { getDb } = require('../utils/firebase-admin');
+const { getDb, getOrgBins, setOrgBin } = require('../utils/firebase-admin');
 
 let _io          = null;
-let _binState    = null;
-let _updateBin   = null;
 let _scanHistory = null;
 
 function setIo(io)           { _io = io; }
-function setBinState(bs)     { _binState = bs; }
-function setUpdateBin(fn)    { _updateBin = fn; }
 function setScanHistory(sh)  { _scanHistory = sh; }
 
 const POINTS_PER_SCAN = 10;
@@ -27,30 +23,43 @@ router.post('/scan', async (req, res) => {
     gps_accuracy,
     location_name = 'Unknown',
     user_id = 'anonymous',
-    probe = false,   // true = AR live-detect, skip Firestore + points
+    org_id = null,
+    probe = false,
   } = req.body;
 
   if (!imageBase64) return res.status(400).json({ error: 'imageBase64 is required' });
   if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'Gemini API key not configured' });
 
   try {
-    // Returns an array of detected items, each with box_2d + recycling data
     const items = await analyzeTrashImage(imageBase64, mimeType);
 
     if (probe) return res.json({ items });
 
-    // Use the first detected item for bin state update
-    if (_updateBin && items.length > 0) _updateBin(binId, items[0].material);
+    // Update org bin fill level in Firestore (only when org is known)
+    if (org_id && items.length > 0) {
+      try {
+        const bins = await getOrgBins(org_id);
+        const bin  = bins[binId];
+        if (bin) {
+          bin.fillLevel    = Math.min(100, (bin.fillLevel || 0) + 10);
+          bin.lastMaterial = items[0].material;
+          bin.lastScanTime = new Date().toISOString();
+          bin.status = bin.fillLevel > 85 ? 'full' : bin.fillLevel > 60 ? 'warning' : 'ok';
+          await setOrgBin(org_id, binId, bin);
+          if (_io) _io.to(org_id).emit('bin-updated', await getOrgBins(org_id));
+        }
+      } catch (binErr) {
+        console.warn('Bin update failed (non-fatal):', binErr.message);
+      }
+    }
 
-    // Log each item to scan history (capped at first 5 to avoid spam)
     const toLog = items.slice(0, 5);
     if (_scanHistory) {
-      const bin = _binState && _binState[binId];
       for (const item of toLog) {
         _scanHistory.unshift({
           timestamp: new Date().toISOString(),
           binId,
-          binName: bin ? bin.name : binId,
+          binName: binId,
           object:   item.object,
           material: item.material,
           action:   'Scanned',
@@ -59,7 +68,6 @@ router.post('/scan', async (req, res) => {
       if (_scanHistory.length > 200) _scanHistory.length = 200;
     }
 
-    // ── Save to Firestore ─────────────────────────────────────────────────────
     let total_points = null;
     const db = getDb();
     if (db) {
@@ -78,6 +86,7 @@ router.post('/scan', async (req, res) => {
           gps_accuracy: accVal,
           timestamp,
           user_id,
+          org_id:       org_id || null,
           regen_points: POINTS_PER_SCAN,
         });
       }
@@ -87,7 +96,7 @@ router.post('/scan', async (req, res) => {
         const doc = await t.get(userRef);
         const current = doc.exists ? (doc.data().total_points || 0) : 0;
         total_points  = current + POINTS_PER_SCAN;
-        t.set(userRef, { total_points, last_scan: timestamp }, { merge: true });
+        t.set(userRef, { total_points, last_scan: timestamp, org_id: org_id || null }, { merge: true });
       });
     }
 
@@ -98,4 +107,4 @@ router.post('/scan', async (req, res) => {
   }
 });
 
-module.exports = { router, setIo, setBinState, setUpdateBin, setScanHistory };
+module.exports = { router, setIo, setScanHistory };

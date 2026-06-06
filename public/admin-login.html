@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Login — TrashScan</title>
+  <title>Admin Login — SARA</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,34 +15,48 @@
 <nav>
   <a href="/" class="brand"><img src="/logo.png" alt="SARA" class="nav-logo" />SARA</a>
   <a href="/">Scanner</a>
-  <a href="/dashboard.html">Digital Twin</a>
-  <a href="/admin-login.html" class="active" style="margin-left:auto;">🔐 Admin</a>
+  <a href="/dashboard.html">Dashboard</a>
+  <a href="/admin-login.html" class="active" style="margin-left:auto;">Admin</a>
 </nav>
 
-<div class="page" style="max-width: 440px;">
-  <h1>🔐 Admin Login</h1>
+<div class="page" style="max-width:440px;">
+  <h1>Admin Login</h1>
 
   <div class="card">
     <form id="login-form">
-      <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-        <label for="password-input">Password</label>
-        <input
-          type="password"
-          id="password-input"
-          placeholder="Enter admin password"
-          autocomplete="current-password"
-          style="width:100%; padding:10px 14px; border:1px solid #cde; border-radius:8px; font-size:1rem;"
-        />
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Organisation ID</label>
+          <input type="text" id="org-id-input" placeholder="Paste your Organisation ID"
+            autocomplete="username"
+            style="width:100%; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.85rem; color:var(--forest); outline:none; transition:border-color 0.18s;" />
+        </div>
+
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Admin Password</label>
+          <input type="password" id="password-input" placeholder="Enter admin password"
+            autocomplete="current-password"
+            style="width:100%; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.85rem; color:var(--forest); outline:none; transition:border-color 0.18s;" />
+        </div>
+
       </div>
 
-      <div style="margin-top: 20px; display:flex; gap:12px; flex-wrap:wrap;">
-        <button type="submit" class="btn btn-scan">🔓 Login</button>
-        <a href="/" class="btn btn-secondary">🏠 Back to Home</a>
+      <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
+        <button type="submit" class="btn btn-scan" style="flex:1; justify-content:center;">Login</button>
+        <a href="/" class="btn btn-secondary">Back</a>
       </div>
     </form>
 
     <div class="spinner" id="spinner" style="margin-top:14px;"></div>
     <div class="error-msg" id="error-msg"></div>
+
+    <div style="margin-top:24px; padding-top:18px; border-top:1px solid var(--sage-100); text-align:center;">
+      <p style="font-size:0.8rem; color:var(--muted);">
+        New organisation?
+        <a href="/org-register.html" style="color:var(--leaf); font-weight:700; text-decoration:none;">Register here &rarr;</a>
+      </p>
+    </div>
   </div>
 </div>
 

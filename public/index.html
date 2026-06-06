@@ -18,6 +18,8 @@
   <a href="/dashboard.html">Dashboard</a>
   <a href="/disposal.html">Disposal Guide</a>
   <span id="points-badge" class="points-badge">0 pts</span>
+  <span id="org-badge" class="org-badge" style="display:none;"></span>
+  <a href="/join.html" id="nav-join" style="margin-left:4px; font-size:0.76rem; font-weight:700; color:var(--sage-300); text-decoration:none; padding:6px 12px; border-radius:20px; transition:color 0.18s, background 0.18s; white-space:nowrap;">Join Org</a>
   <a href="/admin-login.html" style="margin-left:auto;">Admin</a>
 </nav>
 
@@ -56,14 +58,9 @@
 
     <div class="location-section">
       <div class="field-row">
-        <label for="location-select">Location</label>
-        <select id="location-select">
-          <option value="Engineering Cafe">Engineering Cafe</option>
-          <option value="Main Library">Main Library</option>
-          <option value="Science Building">Science Building</option>
-          <option value="Admin Block">Admin Block</option>
-          <option value="Other">Other</option>
-        </select>
+        <label for="location-input">Location</label>
+        <input type="text" id="location-input" placeholder="e.g. Library, Cafeteria…"
+          style="flex:1; padding:9px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:500; background:var(--white); color:var(--body-text); outline:none; transition:border-color 0.18s;" />
       </div>
       <p id="gps-status" class="gps-status">GPS will be captured automatically when you scan.</p>
     </div>

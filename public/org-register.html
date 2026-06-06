@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register Organisation — SARA</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300;1,9..144,500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand"><img src="/logo.png" alt="SARA" class="nav-logo" />SARA</a>
+  <a href="/">Scanner</a>
+  <a href="/dashboard.html">Dashboard</a>
+  <a href="/disposal.html">Disposal Guide</a>
+  <a href="/admin-login.html" style="margin-left:auto;">Admin</a>
+</nav>
+
+<div class="page" style="max-width:520px;">
+  <h1>Register Organisation</h1>
+
+  <div class="card" id="form-card">
+    <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px; line-height:1.7;">
+      Set up SARA for your campus, company, or organisation. You'll get a private waste intelligence dashboard and a join code to share with your members.
+    </p>
+
+    <div style="display:flex; flex-direction:column; gap:16px;">
+
+      <div>
+        <label style="display:block; font-size:0.75rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Organisation Name *</label>
+        <input id="reg-name" type="text" placeholder="e.g. National University of Laos"
+          style="width:100%; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.9rem; color:var(--forest); outline:none; transition:border-color 0.18s;" />
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Home Location Name</label>
+        <input id="reg-location" type="text" placeholder="e.g. Vientiane, Laos"
+          style="width:100%; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.9rem; color:var(--forest); outline:none; transition:border-color 0.18s;" />
+        <p style="font-size:0.75rem; color:var(--muted); margin-top:6px; padding-left:8px;">Used to centre your dashboard map.</p>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">GPS Coordinates (optional)</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="reg-lat" type="number" step="any" placeholder="Latitude"
+            style="flex:1; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.9rem; color:var(--forest); outline:none;" />
+          <input id="reg-lng" type="number" step="any" placeholder="Longitude"
+            style="flex:1; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.9rem; color:var(--forest); outline:none;" />
+          <button class="btn btn-secondary" id="btn-gps" style="padding:10px 16px; white-space:nowrap;">📍 Use GPS</button>
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Admin Password *</label>
+        <input id="reg-password" type="password" placeholder="Choose a strong password"
+          style="width:100%; padding:11px 16px; border:1.5px solid var(--sage-200); border-radius:50px; font-family:'Syne',sans-serif; font-size:0.9rem; color:var(--forest); outline:none; transition:border-color 0.18s;" />
+        <p style="font-size:0.75rem; color:var(--muted); margin-top:6px; padding-left:8px;">Used to log in to your private dashboard. Keep it safe.</p>
+      </div>
+
+    </div>
+
+    <button class="btn btn-primary" id="btn-register" style="width:100%; justify-content:center; padding:14px; margin-top:24px;">
+      Create Organisation
+    </button>
+
+    <div class="error-msg" id="reg-error" style="margin-top:14px;"></div>
+  </div>
+
+  <!-- Success state -->
+  <div class="card" id="success-card" style="display:none; text-align:center;">
+    <div style="font-size:2.5rem; margin-bottom:12px;">🎉</div>
+    <h2 style="font-family:'Fraunces',serif; font-style:italic; font-weight:300; font-size:1.6rem; color:var(--forest); text-transform:none; letter-spacing:0; margin-bottom:8px;">Organisation Created!</h2>
+    <p style="color:var(--muted); font-size:0.9rem; margin-bottom:28px;">Share this join code with your members so they can link their scans to your dashboard.</p>
+
+    <div style="background:var(--forest); color:var(--white); border-radius:var(--radius); padding:28px; margin-bottom:24px;">
+      <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--sage-300); margin-bottom:10px;">Your Join Code</div>
+      <div id="result-join-code" style="font-size:2.8rem; font-weight:700; letter-spacing:0.18em; font-family:'Syne',sans-serif;"></div>
+      <button id="btn-copy" class="btn btn-secondary" style="margin-top:16px; padding:8px 22px; background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.2); color:var(--white);">Copy Code</button>
+    </div>
+
+    <div style="background:var(--sage-100); border:1px solid var(--sage-200); border-radius:var(--radius-sm); padding:14px 18px; margin-bottom:24px; text-align:left;">
+      <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:4px;">Your Organisation ID</div>
+      <div id="result-org-id" style="font-size:0.8rem; font-family:monospace; color:var(--forest); word-break:break-all;"></div>
+      <p style="font-size:0.75rem; color:var(--muted); margin-top:6px;">Use this ID when logging in to your admin dashboard.</p>
+    </div>
+
+    <a href="/admin-login.html" class="btn btn-primary" style="text-decoration:none; justify-content:center; width:100%; padding:13px;">
+      Go to Admin Login &rarr;
+    </a>
+  </div>
+</div>
+
+<script src="/js/org-register.js"></script>
+</body>
+</html>

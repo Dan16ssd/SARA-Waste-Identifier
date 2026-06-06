@@ -42,8 +42,8 @@ body {
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
 nav {
-  background: var(--white);
-  border-bottom: 1px solid var(--sage-200);
+  background: var(--forest);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   padding: 0 28px;
   display: flex;
   align-items: center;
@@ -52,7 +52,7 @@ nav {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 12px rgba(22,46,30,0.06);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.25);
 }
 
 nav .brand {
@@ -63,7 +63,7 @@ nav .brand {
   font-style: italic;
   font-weight: 300;
   font-size: 1.3rem;
-  color: var(--leaf);
+  color: var(--sage-100);
   text-decoration: none;
   letter-spacing: -0.01em;
   margin-right: 12px;
@@ -74,13 +74,14 @@ nav .brand {
   height: 40px;
   width: auto;
   flex-shrink: 0;
+  border-radius: 50%;
 }
 
 nav a:not(.brand) {
   font-family: 'Syne', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--sage-300);
   text-decoration: none;
   padding: 6px 14px;
   border-radius: 20px;
@@ -90,26 +91,42 @@ nav a:not(.brand) {
 }
 
 nav a:not(.brand):hover {
-  color: var(--forest);
-  background: var(--sage-100);
+  color: var(--white);
+  background: rgba(255,255,255,0.08);
 }
 
 nav a.active {
-  color: var(--leaf);
-  background: var(--sage-100);
+  color: var(--white);
+  background: rgba(255,255,255,0.12);
 }
 
 .points-badge {
   font-family: 'Syne', sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--leaf);
-  background: var(--sage-100);
-  border: 1.5px solid var(--sage-200);
+  color: var(--sage-100);
+  background: rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.15);
   padding: 5px 14px;
   border-radius: 20px;
   letter-spacing: 0.04em;
   margin-left: 8px;
+}
+
+.org-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #86efac;
+  background: rgba(134,239,172,0.12);
+  border: 1.5px solid rgba(134,239,172,0.25);
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  margin-left: 4px;
+  white-space: nowrap;
 }
 
 /* ── Page wrapper ─────────────────────────────────────────────────────────── */
