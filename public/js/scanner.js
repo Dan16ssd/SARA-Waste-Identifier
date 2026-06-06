@@ -104,6 +104,7 @@
   const placeholder    = document.getElementById('placeholder-text');
   const canvas         = document.getElementById('canvas');
   const arScanner      = document.getElementById('ar-scanner');
+  const arOverlay      = document.getElementById('ar-overlay');
   const detectStatus   = document.getElementById('detect-status');
   const fileInput      = document.getElementById('file-input');
   const btnCamera      = document.getElementById('btn-camera');
@@ -119,6 +120,64 @@
   let cameraStream       = null;
   let cameraActive       = false;
   let frozenFrame        = null;
+
+  // ── AR auto-detection loop ────────────────────────────────────────────────
+  let arTimer     = null;
+  let arBusy      = false;
+
+  function startArLoop() {
+    if (arTimer) return;
+    setTimeout(runArDetect, 1500);
+    arTimer = setInterval(runArDetect, 6000);
+  }
+
+  function stopArLoop() {
+    if (arTimer) { clearInterval(arTimer); arTimer = null; }
+    arBusy = false;
+    if (arOverlay) {
+      arOverlay.getContext('2d').clearRect(0, 0, arOverlay.width, arOverlay.height);
+    }
+    if (detectStatus) detectStatus.style.display = 'none';
+  }
+
+  async function runArDetect() {
+    if (!cameraActive || arBusy || !video.videoWidth) return;
+    arBusy = true;
+    try {
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width  = video.videoWidth;
+      tmpCanvas.height = video.videoHeight;
+      tmpCanvas.getContext('2d').drawImage(video, 0, 0);
+      const b64 = tmpCanvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+
+      const resp = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: b64, mimeType: 'image/jpeg', probe: true, user_id: getUserId() }),
+      });
+      if (!resp.ok || !cameraActive) return;
+      const data  = await resp.json();
+      const items = (data.items || []).filter(i => i.box_2d);
+      if (!cameraActive) return;
+
+      // Resize overlay to match video natural resolution
+      arOverlay.width  = video.videoWidth;
+      arOverlay.height = video.videoHeight;
+
+      const octx = arOverlay.getContext('2d');
+      octx.clearRect(0, 0, arOverlay.width, arOverlay.height);
+      items.forEach(item => drawBox(octx, item.box_2d, getCategoryColor(item.material), item.label || item.object));
+
+      if (items.length > 0) {
+        detectStatus.textContent   = 'Detected: ' + items.map(i => i.label || i.object).join(', ');
+        detectStatus.style.display = 'block';
+      } else {
+        detectStatus.style.display = 'none';
+      }
+    } catch { /* silent — camera may have been stopped */ } finally {
+      arBusy = false;
+    }
+  }
 
   // ── Camera ────────────────────────────────────────────────────────────────────
   btnCamera.addEventListener('click', async () => {
@@ -138,6 +197,7 @@
       btnScan.disabled = false;
       clearCards();
       clearError();
+      startArLoop();
     } catch {
       showError('Camera access denied or unavailable. Please upload an image instead.');
     }
@@ -192,7 +252,7 @@
   function drawBox(ctx, box_2d, color, label) {
     if (!box_2d || box_2d.length < 4) return;
     const [ymin, xmin, ymax, xmax] = box_2d;
-    const W = canvas.width, H = canvas.height;
+    const W = ctx.canvas.width, H = ctx.canvas.height;
 
     const x = xmin / 1000 * W;
     const y = ymin / 1000 * H;
@@ -301,6 +361,7 @@
   // ── Scan ──────────────────────────────────────────────────────────────────────
   btnScan.addEventListener('click', async () => {
     if (cameraActive) {
+      stopArLoop();
       canvas.width  = video.videoWidth  || 640;
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
@@ -383,6 +444,7 @@
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   function stopCamera() {
+    stopArLoop();
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
     video.style.display = 'none';
     arScanner.style.display = 'none';

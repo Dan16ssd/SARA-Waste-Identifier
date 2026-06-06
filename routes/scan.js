@@ -27,6 +27,7 @@ router.post('/scan', async (req, res) => {
     gps_accuracy,
     location_name = 'Unknown',
     user_id = 'anonymous',
+    probe = false,   // true = AR live-detect, skip Firestore + points
   } = req.body;
 
   if (!imageBase64) return res.status(400).json({ error: 'imageBase64 is required' });
@@ -35,6 +36,8 @@ router.post('/scan', async (req, res) => {
   try {
     // Returns an array of detected items, each with box_2d + recycling data
     const items = await analyzeTrashImage(imageBase64, mimeType);
+
+    if (probe) return res.json({ items });
 
     // Use the first detected item for bin state update
     if (_updateBin && items.length > 0) _updateBin(binId, items[0].material);

@@ -52,7 +52,7 @@ async function callGemini(model, imageBase64, mimeType) {
             { text: PROMPT },
           ],
         }],
-        generationConfig: { temperature: 0.1, topK: 1, topP: 1 },
+        generationConfig: { temperature: 0.1 },
       }),
       signal: AbortSignal.timeout(30000),
     }
@@ -109,7 +109,17 @@ async function callGroq(imageBase64, mimeType) {
 // ── Parse and enrich array response from any model ────────────────────────────
 function parseAndEnrichArray(rawText) {
   const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  let items = JSON.parse(cleaned);
+
+  let items;
+  try {
+    items = JSON.parse(cleaned);
+  } catch {
+    // Model added text around the JSON — extract the first [...] block
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('No JSON array in AI response');
+    items = JSON.parse(match[0]);
+  }
+
   if (!Array.isArray(items)) items = [items];
 
   return items.map((item) => {
