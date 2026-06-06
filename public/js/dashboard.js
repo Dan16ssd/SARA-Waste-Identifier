@@ -21,6 +21,15 @@
   // ── Scan trails: user_id → [{lat,lng,ts}] (max 5) ────────────────────────────
   const userTrails = {};
 
+  // ── Fallback coords when GPS is null ─────────────────────────────────────────
+  const LOCATION_COORDS = {
+    'Engineering Cafe': [17.9651, 102.6220],
+    'Main Library':     [17.9644, 102.6214],
+    'Science Building': [17.9638, 102.6228],
+    'Admin Block':      [17.9658, 102.6208],
+  };
+  function jitter(v) { return v + (Math.random() - 0.5) * 0.0003; }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Colour map
   // ─────────────────────────────────────────────────────────────────────────────
@@ -102,9 +111,9 @@
     clusterGroup.addTo(leafletMap);
 
     // ── Heatmap layer (hidden initially) ─────────────────────────────────────
-    heatLayer = L.heatLayer([], { radius: 28, blur: 20, maxZoom: 17, gradient: {
-      0.2: '#74c69d',
-      0.5: '#f4a261',
+    heatLayer = L.heatLayer([], { radius: 40, blur: 30, max: 1, minOpacity: 0.4, gradient: {
+      0.3: '#74c69d',
+      0.6: '#f4a261',
       1.0: '#e63946',
     }});
 
@@ -135,11 +144,12 @@
   function createMarker(scan, isNew) {
     if (!scan.latitude || !scan.longitude) return null;
 
-    const colour = colourFor(scan.category);
-    const cls    = isNew ? 'scan-dot new-marker' : 'scan-dot';
-    const icon   = L.divIcon({
+    const colour  = colourFor(scan.category);
+    const cls     = isNew ? 'scan-dot new-marker' : 'scan-dot';
+    const opacity = scan.approx ? '0.5' : '1';
+    const icon    = L.divIcon({
       className: '',
-      html: '<div class="' + cls + '" style="background:' + colour + ';"></div>',
+      html: '<div class="' + cls + '" style="background:' + colour + ';opacity:' + opacity + ';"></div>',
       iconSize:   [14, 14],
       iconAnchor: [7, 7],
       popupAnchor:[0, -7],
@@ -379,12 +389,24 @@
 
   function parseScan(raw) {
     const ts = raw.timestamp && raw.timestamp.toDate ? raw.timestamp.toDate() : new Date(raw.timestamp || 0);
+
+    let lat = typeof raw.latitude  === 'number' ? raw.latitude  : null;
+    let lng = typeof raw.longitude === 'number' ? raw.longitude : null;
+
+    // Fall back to named-location coords when GPS wasn't captured
+    if ((lat === null || lng === null) && LOCATION_COORDS[raw.location_name]) {
+      [lat, lng] = LOCATION_COORDS[raw.location_name];
+      lat = jitter(lat);
+      lng = jitter(lng);
+    }
+
     return {
       item_name:     raw.item_name     || '',
       category:      raw.category      || '',
       location_name: raw.location_name || '',
-      latitude:      typeof raw.latitude  === 'number' ? raw.latitude  : null,
-      longitude:     typeof raw.longitude === 'number' ? raw.longitude : null,
+      latitude:      lat,
+      longitude:     lng,
+      approx:        typeof raw.latitude !== 'number', // flag for approx marker
       gps_accuracy:  raw.gps_accuracy  || null,
       regen_points:  raw.regen_points  || 10,
       user_id:       raw.user_id       || 'anon',
