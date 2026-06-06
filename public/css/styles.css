@@ -346,6 +346,29 @@ h2 {
   text-transform: uppercase;
 }
 
+/* ── Detect status — scanning pulse ─────────────────────────────────────── */
+#detect-status.scanning {
+  color: rgba(74,222,128,0.7);
+  border-color: rgba(74,222,128,0.15);
+}
+
+#detect-status.scanning::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(74,222,128,0.85);
+  margin-right: 7px;
+  vertical-align: middle;
+  animation: arPulseDot 1s ease-in-out infinite;
+}
+
+@keyframes arPulseDot {
+  0%, 100% { opacity: 1;    transform: scale(1);   }
+  50%       { opacity: 0.35; transform: scale(0.7); }
+}
+
 /* ── Location section ──────────────────────────────────────────────────────── */
 .location-section { margin-bottom: 22px; }
 

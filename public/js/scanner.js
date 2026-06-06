@@ -124,16 +124,18 @@
   // ── AR auto-detection loop ────────────────────────────────────────────────
   let arTimer     = null;
   let arBusy      = false;
+  let arLastItems = [];
 
   function startArLoop() {
     if (arTimer) return;
-    setTimeout(runArDetect, 1500);
-    arTimer = setInterval(runArDetect, 6000);
+    setTimeout(runArDetect, 500);
+    arTimer = setInterval(runArDetect, 3000);
   }
 
   function stopArLoop() {
     if (arTimer) { clearInterval(arTimer); arTimer = null; }
-    arBusy = false;
+    arBusy      = false;
+    arLastItems = [];
     if (arOverlay) {
       arOverlay.getContext('2d').clearRect(0, 0, arOverlay.width, arOverlay.height);
     }
@@ -143,6 +145,30 @@
   async function runArDetect() {
     if (!cameraActive || arBusy || !video.videoWidth) return;
     arBusy = true;
+
+    // Keep last boxes visible while new request is in-flight
+    if (arLastItems.length > 0) {
+      const m = getLetterboxMetrics();
+      if (m) {
+        arOverlay.width  = m.cw;
+        arOverlay.height = m.ch;
+        const octx = arOverlay.getContext('2d');
+        octx.clearRect(0, 0, arOverlay.width, arOverlay.height);
+        arLastItems.forEach(item =>
+          drawBox(octx, item.box_2d, getCategoryColor(item.material),
+                  item.label || item.object, m.renderedW, m.renderedH, m.offsetX, m.offsetY)
+        );
+      }
+    }
+
+    // Scanning indicator
+    detectStatus.textContent = 'Scanning…';
+    detectStatus.classList.add('scanning');
+    detectStatus.style.display = 'block';
+
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 15000);
+
     try {
       const tmpCanvas = document.createElement('canvas');
       tmpCanvas.width  = video.videoWidth;
@@ -151,30 +177,51 @@
       const b64 = tmpCanvas.toDataURL('image/jpeg', 0.75).split(',')[1];
 
       const resp = await fetch('/api/scan', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: b64, mimeType: 'image/jpeg', probe: true, user_id: getUserId() }),
+        body:    JSON.stringify({ imageBase64: b64, mimeType: 'image/jpeg', probe: true, user_id: getUserId() }),
+        signal:  controller.signal,
       });
+
+      clearTimeout(abortTimer);
       if (!resp.ok || !cameraActive) return;
+
       const data  = await resp.json();
       const items = (data.items || []).filter(i => i.box_2d);
       if (!cameraActive) return;
 
-      // Resize overlay to match video natural resolution
-      arOverlay.width  = video.videoWidth;
-      arOverlay.height = video.videoHeight;
+      // Draw with letterbox-corrected coordinates
+      const m = getLetterboxMetrics();
+      if (!m) return;
+      arOverlay.width  = m.cw;
+      arOverlay.height = m.ch;
 
       const octx = arOverlay.getContext('2d');
       octx.clearRect(0, 0, arOverlay.width, arOverlay.height);
-      items.forEach(item => drawBox(octx, item.box_2d, getCategoryColor(item.material), item.label || item.object));
+      items.forEach(item =>
+        drawBox(octx, item.box_2d, getCategoryColor(item.material),
+                item.label || item.object, m.renderedW, m.renderedH, m.offsetX, m.offsetY)
+      );
 
+      arLastItems = items;
+
+      detectStatus.classList.remove('scanning');
       if (items.length > 0) {
         detectStatus.textContent   = 'Detected: ' + items.map(i => i.label || i.object).join(', ');
         detectStatus.style.display = 'block';
       } else {
         detectStatus.style.display = 'none';
       }
-    } catch { /* silent — camera may have been stopped */ } finally {
+    } catch {
+      clearTimeout(abortTimer);
+      detectStatus.classList.remove('scanning');
+      if (arLastItems.length > 0) {
+        detectStatus.textContent   = 'Detected: ' + arLastItems.map(i => i.label || i.object).join(', ');
+        detectStatus.style.display = 'block';
+      } else {
+        detectStatus.style.display = 'none';
+      }
+    } finally {
       arBusy = false;
     }
   }
@@ -249,13 +296,18 @@
   }
 
   // ── Draw a single bounding box (box_2d = [ymin,xmin,ymax,xmax] 0-1000) ───────
-  function drawBox(ctx, box_2d, color, label) {
+  // renderW/renderH/offsetX/offsetY: optional — used by AR overlay to correct for
+  // object-fit:contain letterboxing. Omit for static canvas (falls back to canvas size).
+  function drawBox(ctx, box_2d, color, label, renderW, renderH, offsetX, offsetY) {
     if (!box_2d || box_2d.length < 4) return;
     const [ymin, xmin, ymax, xmax] = box_2d;
-    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const W  = renderW  !== undefined ? renderW  : ctx.canvas.width;
+    const H  = renderH  !== undefined ? renderH  : ctx.canvas.height;
+    const ox = offsetX  !== undefined ? offsetX  : 0;
+    const oy = offsetY  !== undefined ? offsetY  : 0;
 
-    const x = xmin / 1000 * W;
-    const y = ymin / 1000 * H;
+    const x = (xmin / 1000 * W) + ox;
+    const y = (ymin / 1000 * H) + oy;
     const w = (xmax - xmin) / 1000 * W;
     const h = (ymax - ymin) / 1000 * H;
     const lw = Math.max(2, Math.round(W / 240));
@@ -277,6 +329,23 @@
     ctx.fillRect(x, clampedLabelY - labelH, textW + 14, labelH);
     ctx.fillStyle = '#fff';
     ctx.fillText(label, x + 7, clampedLabelY - 6);
+  }
+
+  // ── Letterbox geometry helper ─────────────────────────────────────────────────
+  // Returns the pixel region inside #camera-wrap where the video content is
+  // actually rendered, accounting for object-fit:contain black bars.
+  function getLetterboxMetrics() {
+    const cw = video.clientWidth;
+    const ch = video.clientHeight;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!vw || !vh || !cw || !ch) return null;
+    const scale    = Math.min(cw / vw, ch / vh);
+    const renderedW = vw * scale;
+    const renderedH = vh * scale;
+    const offsetX   = (cw - renderedW) / 2;
+    const offsetY   = (ch - renderedH) / 2;
+    return { cw, ch, renderedW, renderedH, offsetX, offsetY };
   }
 
   // ── Crop an item from the frozen frame into a new canvas ──────────────────────
