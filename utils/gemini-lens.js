@@ -15,15 +15,25 @@ function isNetworkError(err) {
 }
 
 const PROMPT =
-  'Analyze this image of trash/waste. ' +
-  'First, identify the specific object (e.g. "PET plastic bottle", "aluminum can", "cardboard box"). ' +
-  'Then identify the primary material type from this list: plastic, metal, glass, paper, organic, ewaste, hazardous, mixed. ' +
-  'Return ONLY a JSON object (no markdown, no code fences) with these fields: ' +
-  'object (string – the specific item), ' +
-  'material (string – one of the listed types), ' +
-  'category (string – short descriptive category), ' +
-  'recyclable (boolean), ' +
-  'disposalInstructions (string – one sentence).';
+  'You are the advanced Object Detection and Vision AI engine for the S.A.R.A. recycling app. ' +
+  'Your task is to analyze the uploaded image, look for waste or recyclable items, detect their exact ' +
+  'locations so the app can crop them, and provide recycling data. ' +
+  'For every distinct waste or recyclable item you see in the image, you must find its boundaries and return the data. ' +
+  'CRITICAL: Provide the location using normalized bounding box coordinates [ymin, xmin, ymax, xmax] on a scale of 0 to 1000. ' +
+  'Output ONLY a JSON array — no markdown, no code fences, no conversational text: ' +
+  '[{"box_2d":[200,150,600,850],"label":"Plastic Water Bottle","category":"Recyclable","material":"PET Plastic","action_required":"Rinse, crush, and place in the blue recycling bin."}]';
+
+// ── Material key helper ───────────────────────────────────────────────────────
+function getMaterialKey(raw) {
+  if (raw.includes('plastic'))  return 'plastic';
+  if (raw.includes('metal') || raw.includes('aluminum') || raw.includes('steel')) return 'metal';
+  if (raw.includes('glass'))    return 'glass';
+  if (raw.includes('paper') || raw.includes('cardboard')) return 'paper';
+  if (raw.includes('organic') || raw.includes('food'))    return 'organic';
+  if (raw.includes('ewaste') || raw.includes('e-waste') || raw.includes('electronic')) return 'ewaste';
+  if (raw.includes('hazard'))   return 'hazardous';
+  return raw.replace(/[^a-z]/g, '') || 'mixed';
+}
 
 // ── Gemini ────────────────────────────────────────────────────────────────────
 async function callGemini(model, imageBase64, mimeType) {
@@ -80,7 +90,7 @@ async function callGroq(imageBase64, mimeType) {
         ],
       }],
       temperature: 0.1,
-      max_tokens: 300,
+      max_tokens: 600,
     }),
     signal: AbortSignal.timeout(30000),
   });
@@ -96,36 +106,32 @@ async function callGroq(imageBase64, mimeType) {
   return data?.choices?.[0]?.message?.content || '';
 }
 
-// ── Parse raw JSON text from any model ───────────────────────────────────────
-function parseAndEnrich(rawText) {
+// ── Parse and enrich array response from any model ────────────────────────────
+function parseAndEnrichArray(rawText) {
   const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  const result = JSON.parse(cleaned);
+  let items = JSON.parse(cleaned);
+  if (!Array.isArray(items)) items = [items];
 
-  const raw = (result.material || '').toLowerCase();
-  const materialKey =
-    raw.includes('plastic')  ? 'plastic'  :
-    raw.includes('metal')    ? 'metal'    :
-    raw.includes('glass')    ? 'glass'    :
-    raw.includes('paper') || raw.includes('cardboard') ? 'paper'    :
-    raw.includes('organic') || raw.includes('food')    ? 'organic'  :
-    raw.includes('ewaste') || raw.includes('e-waste') || raw.includes('electronic') ? 'ewaste' :
-    raw.includes('hazard')   ? 'hazardous' :
-    raw.replace(/[^a-z]/g, '');
+  return items.map((item) => {
+    const raw = (item.material || '').toLowerCase();
+    const materialKey = getMaterialKey(raw);
+    const guide = guidelines[materialKey] || guidelines['mixed'];
 
-  const guide = guidelines[materialKey] || guidelines['mixed'];
-
-  return {
-    object:   result.object || result.material || 'Unknown item',
-    material: guide.name    || result.material,
-    category: result.category || guide.name,
-    recyclable: typeof result.recyclable === 'boolean' ? result.recyclable : guide.recyclable,
-    guidelines: guide.guidelines,
-    icon:     guide.icon,
-    disposalInstructions: result.disposalInstructions || guide.guidelines[0],
-  };
+    return {
+      box_2d: Array.isArray(item.box_2d) && item.box_2d.length === 4 ? item.box_2d : null,
+      label:  item.label   || item.material || 'Unknown item',
+      object: item.label   || item.material || 'Unknown item',
+      material: guide.name || item.material,
+      category: item.category || guide.name,
+      recyclable: typeof item.recyclable === 'boolean' ? item.recyclable : guide.recyclable,
+      guidelines: guide.guidelines,
+      icon: guide.icon,
+      disposalInstructions: item.action_required || guide.guidelines[0],
+    };
+  });
 }
 
-// ── Fallback chain: gemini-2.5-flash → gemini-1.5-flash → gpt-4o-mini ────────
+// ── Fallback chain: gemini-2.5-flash → gemini-1.5-flash → groq-llama-vision ──
 const PROVIDERS = [
   { name: 'gemini-2.5-flash', call: (b64, mime) => callGemini('gemini-2.5-flash', b64, mime) },
   { name: 'gemini-1.5-flash', call: (b64, mime) => callGemini('gemini-1.5-flash', b64, mime) },
@@ -141,18 +147,18 @@ async function analyzeTrashImage(imageBase64, mimeType = 'image/jpeg') {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const rawText = await provider.call(imageBase64, mimeType);
-        return parseAndEnrich(rawText);
+        return parseAndEnrichArray(rawText);
       } catch (err) {
         lastErr = err;
 
-        if (err.fatal) throw err; // missing API key — don't retry
+        if (err.fatal) throw err;
 
         const retry = isNetworkError(err) || (err.status && isTransient(err.status));
         if (retry && attempt === 0) {
           await sleep(1200);
           continue;
         }
-        break; // move to next provider
+        break;
       }
     }
   }
