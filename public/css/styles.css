@@ -71,10 +71,8 @@ nav .brand {
 }
 
 .nav-logo {
-  height: 36px;
-  width: 36px;
-  object-fit: cover;
-  border-radius: 50%;
+  height: 40px;
+  width: auto;
   flex-shrink: 0;
 }
 
