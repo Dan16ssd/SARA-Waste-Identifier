@@ -1,4 +1,6 @@
 node_modules/
 .env
 data/logs.json
-CLAUDE.md
+behavior.md
+.claude
+AR.MD
