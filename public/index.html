@@ -3,65 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TrashScan — Material Identifier</title>
+  <title>SARA — Smart Recycling Assistant</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300;1,9..144,500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
 
 <nav>
-  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/" class="brand">SARA</a>
   <a href="/" class="active">Scanner</a>
-  <a href="/dashboard.html">Digital Twin</a>
-  <a href="/disposal.html">♻️ Disposal Guide</a>
-  <a href="/admin-login.html" style="margin-left:auto;">🔐 Admin</a>
+  <a href="/dashboard.html">Dashboard</a>
+  <a href="/disposal.html">Disposal Guide</a>
+  <span id="points-badge" class="points-badge">0 pts</span>
+  <a href="/admin-login.html" style="margin-left:auto;">Admin</a>
 </nav>
 
 <div class="page">
   <h1>Material Identifier</h1>
 
   <div class="card">
-    <!-- Capture buttons -->
     <div class="btn-row">
-      <button class="btn btn-primary" id="btn-camera">📷 Use Camera</button>
-      <button class="btn btn-secondary" id="btn-upload">📁 Upload Image</button>
+      <button class="btn btn-primary" id="btn-camera">Use Camera</button>
+      <button class="btn btn-secondary" id="btn-upload">Upload Image</button>
       <input type="file" id="file-input" accept="image/*" />
     </div>
 
-    <!-- Preview area -->
     <div id="camera-wrap">
       <video id="video" autoplay playsinline style="display:none;"></video>
+      <canvas id="canvas" style="display:none;"></canvas>
       <img id="preview" alt="Preview" style="display:none;" />
-      <p id="placeholder-text">No image selected. Use camera or upload a photo.</p>
+
+      <div id="ar-scanner" style="display:none;">
+        <div class="ar-corner ar-tl"></div>
+        <div class="ar-corner ar-tr"></div>
+        <div class="ar-corner ar-bl"></div>
+        <div class="ar-corner ar-br"></div>
+        <div class="ar-scan-line"></div>
+        <div class="ar-crosshair">
+          <div class="ar-ch-v"></div>
+          <div class="ar-ch-h"></div>
+        </div>
+      </div>
+
+      <div id="detect-status" style="display:none;"></div>
+      <p id="placeholder-text">Point camera at an item or upload a photo</p>
     </div>
 
-    <!-- Camera capture button (shown when live camera is active) -->
-    <div id="capture-row" style="display:none; margin-bottom:16px;">
-      <button class="btn btn-primary" id="btn-capture">📸 Capture Photo</button>
-    </div>
-    <canvas id="canvas" style="display:none;"></canvas>
-
-    <!-- Bin selector -->
-    <div class="field-row">
-      <label for="bin-select">Bin Location:</label>
-      <select id="bin-select">
-        <option value="bin-1">Library Entrance</option>
-        <option value="bin-2">Cafeteria Main</option>
-        <option value="bin-3">Gym Lobby</option>
-        <option value="bin-4">Admin Building</option>
-        <option value="bin-5">Science Block</option>
-        <option value="bin-6">Parking Lot</option>
-      </select>
+    <div class="location-section">
+      <div class="field-row">
+        <label for="location-select">Location</label>
+        <select id="location-select">
+          <option value="Engineering Cafe">Engineering Cafe</option>
+          <option value="Main Library">Main Library</option>
+          <option value="Science Building">Science Building</option>
+          <option value="Admin Block">Admin Block</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <p id="gps-status" class="gps-status">GPS will be captured automatically when you scan.</p>
     </div>
 
-    <!-- Scan button -->
-    <button class="btn btn-scan" id="btn-scan" disabled>🔍 Scan Material</button>
-    <div class="spinner" id="spinner" style="margin-top:14px;"></div>
+    <button class="btn btn-scan" id="btn-scan" disabled>Scan Material</button>
+    <div class="spinner" id="spinner" style="margin-top:16px;"></div>
     <div class="error-msg" id="error-msg"></div>
   </div>
 
-  <!-- Result card — always visible -->
   <div class="card" id="result-card">
-    <h2 style="margin-bottom:16px; color: var(--green-dark);">Scan Result</h2>
+    <h2 style="margin-bottom:20px;">Scan Result</h2>
     <div class="result-grid">
       <span class="result-label">Object</span>
       <span class="result-value" id="res-object">—</span>
@@ -79,29 +90,33 @@
       <span class="result-value" id="res-disposal">—</span>
     </div>
 
-    <!-- Recycling Guidelines — always visible, populated after scan -->
-    <div id="res-guidelines" style="margin-top:20px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-        <strong style="color:var(--green-dark); font-size:1rem;">♻️ Recycling Guidelines</strong>
+    <div id="points-earned" class="points-earned" style="display:none;">
+      <span id="points-earned-text"></span>
+    </div>
+
+    <div id="res-guidelines" style="margin-top:22px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <h2>Recycling Guidelines</h2>
         <a id="res-guide-link" href="/disposal.html" target="_blank"
-          style="font-size:0.85rem; color:var(--green-mid); text-decoration:none; font-weight:600;">
-          View Full Disposal Guide →
+          style="font-size:0.76rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--leaf); text-decoration:none;">
+          Full Guide &rarr;
         </a>
       </div>
-      <ul id="res-guidelines-list" style="margin-top:10px; padding-left:20px; font-size:0.9rem; color:var(--text); line-height:1.7;">
+      <ul id="res-guidelines-list" style="padding-left:20px; font-size:0.88rem; color:var(--body-text); line-height:1.85;">
         <li style="color:var(--muted);">Scan an item to see recycling instructions.</li>
       </ul>
     </div>
   </div>
 
-  <!-- Scan Log -->
   <div class="card">
-    <h2 style="margin-bottom:14px; color:var(--green-dark);">📋 Scan Log</h2>
+    <h2 style="margin-bottom:16px;">Scan Log</h2>
     <div id="scan-log">
-      <p style="color:var(--muted); font-size:0.9rem;">No scans yet this session.</p>
+      <p style="color:var(--muted); font-size:0.85rem;">No scans yet this session.</p>
     </div>
   </div>
 </div>
+
+<div id="points-toast" class="points-toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/scanner.js"></script>

@@ -3,43 +3,118 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Campus Digital Twin — Waste Management</title>
+  <title>SARA — Campus Waste Intelligence</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300;1,9..144,500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 </head>
 <body>
 
 <nav>
-  <a href="/" class="brand">🗑️ TrashScan</a>
+  <a href="/" class="brand">🌿 SARA</a>
   <a href="/">Scanner</a>
-  <a href="/dashboard.html" class="active">Digital Twin</a>
+  <a href="/dashboard.html" class="active">📊 Dashboard</a>
   <a href="/disposal.html">♻️ Disposal Guide</a>
+  <span id="points-badge" class="points-badge">🌱 — pts</span>
   <a href="/admin-login.html" style="margin-left:auto;">🔐 Admin</a>
 </nav>
 
-<div class="page" style="max-width: 1100px;">
-  <h1>🏫 Campus Digital Twin — Waste Management</h1>
+<div class="page" style="max-width: 1200px;">
+  <h1>🗺️ Campus Waste Intelligence</h1>
 
-  <div class="live-bar">
-    <span class="live-dot" id="live-dot"></span>
-    <span id="live-status">Connecting…</span>
-    &nbsp;|&nbsp; Last updated: <span id="last-updated">—</span>
+  <!-- Time filter tabs -->
+  <div class="time-tabs">
+    <button class="tab active" data-period="today">Today</button>
+    <button class="tab" data-period="week">This Week</button>
+    <button class="tab" data-period="month">This Month</button>
   </div>
 
-  <!-- Bin cards grid -->
-  <div id="bins-grid">
-    <p style="color: var(--muted); grid-column: 1/-1;">Loading bin data…</p>
-  </div>
-
-  <!-- Activity Log -->
-  <div class="card">
-    <h2 style="margin-bottom: 14px; color: var(--green-dark);">Activity Log</h2>
-    <div id="activity-log">
-      <p style="color: var(--muted); font-size:0.9rem;">No activity yet.</p>
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" id="stat-scans">—</div>
+      <div class="stat-label">Total Scans</div>
     </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-top">—</div>
+      <div class="stat-label">Top Category</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-points">—</div>
+      <div class="stat-label">ReGen Points Earned</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-locations">—</div>
+      <div class="stat-label">Locations</div>
+    </div>
+  </div>
+
+  <!-- Hotspot card -->
+  <div class="card hotspot-card" id="hotspot-card" style="display:none;">
+    <span class="hotspot-icon">🔥</span>
+    <div>
+      <div class="hotspot-label">Waste Hotspot</div>
+      <div id="hotspot-text" class="hotspot-text">—</div>
+    </div>
+  </div>
+
+  <!-- Map + Pie chart row -->
+  <div class="map-chart-row">
+    <div class="card map-card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+        <h2 style="color:var(--green-dark); margin:0;">📍 Scan Locations</h2>
+        <div class="map-toggle">
+          <button class="map-toggle-btn active" data-mode="markers">● Markers</button>
+          <button class="map-toggle-btn" data-mode="heatmap">🌡 Heatmap</button>
+        </div>
+      </div>
+      <div id="map"></div>
+      <div class="map-legend">
+        <span><span class="leg-dot" style="background:#e63946;"></span>Plastic</span>
+        <span><span class="leg-dot" style="background:#1d8cf8;"></span>Paper</span>
+        <span><span class="leg-dot" style="background:#40916c;"></span>Organic</span>
+        <span><span class="leg-dot" style="background:#f4a261;"></span>Metal</span>
+        <span><span class="leg-dot" style="background:#9b59b6;"></span>Glass</span>
+        <span><span class="leg-dot" style="background:#6c757d;"></span>Other</span>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <h2 style="margin-bottom:12px; color:var(--green-dark);">♻️ By Category</h2>
+      <div class="chart-wrap">
+        <canvas id="pie-chart"></canvas>
+      </div>
+      <div id="chart-empty" style="display:none; text-align:center; color:var(--muted); padding:60px 0 40px;">
+        <div style="font-size:2rem;">🌿</div>
+        <p style="margin-top:8px;">No scans yet.<br/>Start scanning to see data here!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase not configured warning -->
+  <div id="firebase-warning" class="card" style="display:none; border-left:4px solid var(--yellow); background:#fffbf0;">
+    <h3 style="color:#b26a00; margin-bottom:8px;">⚙️ Firebase Not Connected</h3>
+    <p style="color:var(--muted); font-size:0.9rem;">
+      Add your Firebase credentials to <code>.env</code> to enable the live map.<br/>
+      See the setup instructions in the README.
+    </p>
   </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Leaflet + plugins -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="/js/dashboard.js"></script>
 </body>
 </html>

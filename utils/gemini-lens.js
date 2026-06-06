@@ -1,93 +1,164 @@
-
 'use strict';
 
 const guidelines = require('../data/recycling-guidelines.json');
 
-/**
- * Classify trash via Gemini Vision and enrich with recycling guidelines.
- * Falls back gracefully if the API is unavailable.
- *
- * @param {string} imageBase64 - Base64-encoded image data (no data-URL prefix)
- * @param {string} mimeType    - MIME type, e.g. "image/jpeg"
- * @returns {Promise<{object: string, material: string, category: string, recyclable: boolean, guidelines: string[], icon: string, disposalInstructions: string}>}
- */
-async function analyzeTrashImage(imageBase64, mimeType = 'image/jpeg') {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function isTransient(status) {
+  return status === 503 || status === 429 || status === 500;
+}
+
+function isNetworkError(err) {
+  return err.name === 'TimeoutError' ||
+    err.cause?.code === 'ENOTFOUND' ||
+    err.cause?.code === 'ECONNRESET';
+}
+
+const PROMPT =
+  'Analyze this image of trash/waste. ' +
+  'First, identify the specific object (e.g. "PET plastic bottle", "aluminum can", "cardboard box"). ' +
+  'Then identify the primary material type from this list: plastic, metal, glass, paper, organic, ewaste, hazardous, mixed. ' +
+  'Return ONLY a JSON object (no markdown, no code fences) with these fields: ' +
+  'object (string – the specific item), ' +
+  'material (string – one of the listed types), ' +
+  'category (string – short descriptive category), ' +
+  'recyclable (boolean), ' +
+  'disposalInstructions (string – one sentence).';
+
+// ── Gemini ────────────────────────────────────────────────────────────────────
+async function callGemini(model, imageBase64, mimeType) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
-
-  const prompt =
-    'Analyze this image of trash/waste. ' +
-    'First, identify the specific object (e.g. "PET plastic bottle", "aluminum can", "cardboard box"). ' +
-    'Then identify the primary material type from this list: plastic, metal, glass, paper, organic, ewaste, hazardous, mixed. ' +
-    'Return ONLY a JSON object (no markdown, no code fences) with these fields: ' +
-    'object (string – the specific item), ' +
-    'material (string – one of the listed types), ' +
-    'category (string – short descriptive category), ' +
-    'recyclable (boolean), ' +
-    'disposalInstructions (string – one sentence).';
-
-  const body = {
-    contents: [
-      {
-        parts: [
-          { inline_data: { mime_type: mimeType, data: imageBase64 } },
-          { text: prompt },
-        ],
-      },
-    ],
-    generationConfig: { temperature: 0.1, topK: 1, topP: 1 },
-  };
+  if (!apiKey) throw Object.assign(new Error('GEMINI_API_KEY not set'), { fatal: true });
 
   const resp = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mimeType, data: imageBase64 } },
+            { text: PROMPT },
+          ],
+        }],
+        generationConfig: { temperature: 0.1, topK: 1, topP: 1 },
+      }),
+      signal: AbortSignal.timeout(30000),
     }
   );
 
   if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Gemini API error ${resp.status}: ${errText}`);
+    const text = await resp.text();
+    const err = new Error(`Gemini ${model} error ${resp.status}: ${text}`);
+    err.status = resp.status;
+    throw err;
   }
 
   const data = await resp.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
 
-  let geminiResult;
-  try {
-    geminiResult = JSON.parse(cleaned);
-  } catch {
-    throw new Error(`Could not parse Gemini response as JSON: ${rawText}`);
+// ── GPT-4o-mini ───────────────────────────────────────────────────────────────
+async function callOpenAI(imageBase64, mimeType) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw Object.assign(new Error('OPENAI_API_KEY not set'), { fatal: true });
+
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'low' } },
+          { type: 'text', text: PROMPT },
+        ],
+      }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+      max_tokens: 300,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    const err = new Error(`OpenAI error ${resp.status}: ${text}`);
+    err.status = resp.status;
+    throw err;
   }
 
-  // Normalise material key to match guidelines keys
-  const raw = (geminiResult.material || '').toLowerCase();
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || '';
+}
+
+// ── Parse raw JSON text from any model ───────────────────────────────────────
+function parseAndEnrich(rawText) {
+  const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const result = JSON.parse(cleaned);
+
+  const raw = (result.material || '').toLowerCase();
   const materialKey =
     raw.includes('plastic')  ? 'plastic'  :
     raw.includes('metal')    ? 'metal'    :
     raw.includes('glass')    ? 'glass'    :
-    raw.includes('paper') || raw.includes('cardboard') ? 'paper' :
-    raw.includes('organic') || raw.includes('food')    ? 'organic' :
+    raw.includes('paper') || raw.includes('cardboard') ? 'paper'    :
+    raw.includes('organic') || raw.includes('food')    ? 'organic'  :
     raw.includes('ewaste') || raw.includes('e-waste') || raw.includes('electronic') ? 'ewaste' :
     raw.includes('hazard')   ? 'hazardous' :
     raw.replace(/[^a-z]/g, '');
+
   const guide = guidelines[materialKey] || guidelines['mixed'];
 
   return {
-    object: geminiResult.object || geminiResult.material || 'Unknown item',
-    material: guide.name || geminiResult.material,
-    category: geminiResult.category || guide.name,
-    recyclable: typeof geminiResult.recyclable === 'boolean' ? geminiResult.recyclable : guide.recyclable,
+    object:   result.object || result.material || 'Unknown item',
+    material: guide.name    || result.material,
+    category: result.category || guide.name,
+    recyclable: typeof result.recyclable === 'boolean' ? result.recyclable : guide.recyclable,
     guidelines: guide.guidelines,
-    icon: guide.icon,
-    disposalInstructions: geminiResult.disposalInstructions || guide.guidelines[0],
+    icon:     guide.icon,
+    disposalInstructions: result.disposalInstructions || guide.guidelines[0],
   };
+}
+
+// ── Fallback chain: gemini-2.5-flash → gemini-1.5-flash → gpt-4o-mini ────────
+const PROVIDERS = [
+  { name: 'gemini-2.5-flash', call: (b64, mime) => callGemini('gemini-2.5-flash', b64, mime) },
+  { name: 'gemini-1.5-flash', call: (b64, mime) => callGemini('gemini-1.5-flash', b64, mime) },
+  { name: 'gpt-4o-mini',      call: (b64, mime) => callOpenAI(b64, mime) },
+];
+
+async function analyzeTrashImage(imageBase64, mimeType = 'image/jpeg') {
+  if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
+
+  let lastErr;
+
+  for (const provider of PROVIDERS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const rawText = await provider.call(imageBase64, mimeType);
+        return parseAndEnrich(rawText);
+      } catch (err) {
+        lastErr = err;
+
+        if (err.fatal) throw err; // missing API key — don't retry
+
+        const retry = isNetworkError(err) || (err.status && isTransient(err.status));
+        if (retry && attempt === 0) {
+          await sleep(1200);
+          continue;
+        }
+        break; // move to next provider
+      }
+    }
+  }
+
+  throw lastErr || new Error('All AI providers failed');
 }
 
 module.exports = { analyzeTrashImage };

@@ -40,6 +40,15 @@ function updateBin(binId, material) {
   io.emit('bin-updated', binState);
 }
 
+// ── Firebase client config (safe to expose — protected by Firestore rules) ─────
+app.get('/api/firebase-config', (_req, res) => {
+  res.json({
+    apiKey:     process.env.FIREBASE_API_KEY     || '',
+    projectId:  process.env.FIREBASE_PROJECT_ID  || '',
+    configured: !!(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_API_KEY),
+  });
+});
+
 // ── Mount routes ──────────────────────────────────────────────────────────────
 const recyclingGuidelines = require('./data/recycling-guidelines.json');
 app.get('/api/guidelines', (_req, res) => res.json(recyclingGuidelines));
