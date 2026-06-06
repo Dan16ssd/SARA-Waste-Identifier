@@ -59,27 +59,26 @@ async function callGemini(model, imageBase64, mimeType) {
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-// ── GPT-4o-mini ───────────────────────────────────────────────────────────────
-async function callOpenAI(imageBase64, mimeType) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw Object.assign(new Error('OPENAI_API_KEY not set'), { fatal: true });
+// ── Groq (free) ───────────────────────────────────────────────────────────────
+async function callGroq(imageBase64, mimeType) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw Object.assign(new Error('GROQ_API_KEY not set'), { fatal: true });
 
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'llama-3.2-11b-vision-preview',
       messages: [{
         role: 'user',
         content: [
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'low' } },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
           { type: 'text', text: PROMPT },
         ],
       }],
-      response_format: { type: 'json_object' },
       temperature: 0.1,
       max_tokens: 300,
     }),
@@ -88,7 +87,7 @@ async function callOpenAI(imageBase64, mimeType) {
 
   if (!resp.ok) {
     const text = await resp.text();
-    const err = new Error(`OpenAI error ${resp.status}: ${text}`);
+    const err = new Error(`Groq error ${resp.status}: ${text}`);
     err.status = resp.status;
     throw err;
   }
@@ -130,7 +129,7 @@ function parseAndEnrich(rawText) {
 const PROVIDERS = [
   { name: 'gemini-2.5-flash', call: (b64, mime) => callGemini('gemini-2.5-flash', b64, mime) },
   { name: 'gemini-1.5-flash', call: (b64, mime) => callGemini('gemini-1.5-flash', b64, mime) },
-  { name: 'gpt-4o-mini',      call: (b64, mime) => callOpenAI(b64, mime) },
+  { name: 'groq-llama-vision', call: (b64, mime) => callGroq(b64, mime) },
 ];
 
 async function analyzeTrashImage(imageBase64, mimeType = 'image/jpeg') {
