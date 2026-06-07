@@ -25,21 +25,25 @@ Add a small AI chat widget below the scan result card on the SARA scanner page. 
 
 ---
 
-## Prompt Structure (TinyLlama chat format)
+## Prompt Structure
 
-```
-<|system|>
-You are SARA, a friendly recycling assistant. The user just scanned: {object} made of {material}.
-Category: {category}. Recyclable: {yes/no}. Disposal: {disposalInstructions}.
-Answer recycling and eco questions helpfully and concisely. Keep replies under 3 sentences.
-</s>
-<|user|>
-{userMessage}
-</s>
-<|assistant|>
+> **Migration note (2026-06-07):** HuggingFace deprecated the legacy `api-inference.huggingface.co` `text-generation` endpoint this spec originally targeted. The implementation now calls the OpenAI-compatible `https://router.huggingface.co/v1/chat/completions` endpoint with model `TinyLlama/TinyLlama-1.1B-Chat-v1.0:featherless-ai` (the `:featherless-ai` provider suffix is required — the bare model ID returns 400 "not supported"). The system-prompt *content* below is unchanged; only the wire format changed from a raw template string to an OpenAI-style `messages` array. See `routes/chat.js` for the current implementation. Note also that user messages and item context are routed through a third-party inference provider (`featherless-ai`) via HF's router, not just HuggingFace directly.
+
+Messages array sent to the chat-completions endpoint:
+
+```js
+[
+  {
+    role: 'system',
+    content: 'You are SARA, a friendly recycling assistant. The user just scanned: {object} made of {material}. ' +
+             'Category: {category}. Recyclable: {yes/no}. Disposal: {disposalInstructions}. ' +
+             'Answer recycling and eco questions helpfully and concisely. Keep replies under 3 sentences.'
+  },
+  { role: 'user', content: '{userMessage}' }
+]
 ```
 
-Parameters: `max_new_tokens: 200`, `temperature: 0.7`, `do_sample: true`
+Request body: `{ model, messages, max_tokens: 200, temperature: 0.7 }`. Reply extracted from `data.choices[0].message.content`.
 
 ---
 

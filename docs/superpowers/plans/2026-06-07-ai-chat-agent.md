@@ -28,7 +28,9 @@
 **Files:**
 - Create: `routes/chat.js`
 
-- [ ] **Step 1: Create `routes/chat.js`**
+> **⚠️ Post-implementation note (2026-06-07):** The code below targets `api-inference.huggingface.co` with the legacy `text-generation` format — HuggingFace deprecated this during smoke testing (Task 6). The actual shipped implementation calls `https://router.huggingface.co/v1/chat/completions` with model `TinyLlama/TinyLlama-1.1B-Chat-v1.0:featherless-ai` using an OpenAI-style `messages` array and `choices[0].message.content` extraction. **Do not copy the code below verbatim** — read the live `routes/chat.js` and the updated spec doc for the current, working integration. The error-handling shape (status codes, `sanitiseCtx`) carried over; only the wire format and endpoint changed.
+
+- [ ] **Step 1: Create `routes/chat.js`** *(superseded — see note above; code shown here is the original/historical design)*
 
 ```js
 'use strict';
