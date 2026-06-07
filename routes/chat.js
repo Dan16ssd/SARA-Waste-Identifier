@@ -77,6 +77,7 @@ router.post('/ai-chat', async (req, res) => {
 
   const apiKey = process.env.HF_API_KEY;
   if (!apiKey) {
+    // 500, not 503: this is a server misconfiguration (missing env var), not a transient outage.
     return res.status(500).json({ error: 'AI assistant unavailable. Check your HF_API_KEY.' });
   }
 
