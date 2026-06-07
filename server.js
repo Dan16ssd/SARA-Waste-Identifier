@@ -45,6 +45,9 @@ adminModule.setIo(io);
 adminModule.setScanHistory(scanHistory);
 app.use('/api/admin', adminModule.router);
 
+const chatRouter = require('./routes/chat');
+app.use('/api', chatRouter);
+
 // ── Socket.io ─────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
