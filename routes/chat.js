@@ -54,7 +54,13 @@ async function callHF(messages, apiKey) {
     });
 
     clearTimeout(timer);
-    return { status: resp.status, data: await resp.json() };
+    let data = null;
+    try {
+      data = await resp.json();
+    } catch {
+      data = null;
+    }
+    return { status: resp.status, data };
   } catch (err) {
     clearTimeout(timer);
     if (err.name === 'AbortError') throw new Error('timeout');
@@ -77,15 +83,7 @@ router.post('/ai-chat', async (req, res) => {
   const messages = buildMessages(message.trim(), sanitiseCtx(itemContext));
 
   try {
-    let { status, data } = await callHF(messages, apiKey);
-
-    // One retry on cold-start / transient 503 (the router endpoint may not
-    // surface cold-starts the same way the legacy Inference API did, but we
-    // keep this as a safe no-op retry path in case a provider returns it).
-    if (status === 503) {
-      await new Promise(r => setTimeout(r, 3000));
-      ({ status, data } = await callHF(messages, apiKey));
-    }
+    const { status, data } = await callHF(messages, apiKey);
 
     if (status === 503) {
       return res.status(503).json({ error: 'Model is warming up — try again in a moment.' });
