@@ -115,12 +115,98 @@
   const spinner      = document.getElementById('spinner');
   const errorMsg     = document.getElementById('error-msg');
   const scanCards    = document.getElementById('scan-cards');
+  const aiChatCard  = document.getElementById('ai-chat-card');
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput   = document.getElementById('chat-input');
+  const chatSend    = document.getElementById('chat-send');
 
   let currentImageBase64 = null;
   let currentMimeType    = 'image/jpeg';
   let cameraStream       = null;
   let cameraActive       = false;
   let frozenFrame        = null;
+  let currentItemContext = null;
+
+  // ── AI Chat ───────────────────────────────────────────────────────────────────
+  function appendBubble(text, role) {
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble chat-bubble-' + role;
+    bubble.textContent = text;
+    chatMessages.appendChild(bubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return bubble;
+  }
+
+  function showLoadingBubble() {
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble chat-bubble-assistant chat-bubble-loading';
+    bubble.innerHTML = '<div class="chat-dot"></div><div class="chat-dot"></div><div class="chat-dot"></div>';
+    chatMessages.appendChild(bubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return bubble;
+  }
+
+  function initAiChat(item) {
+    currentItemContext = {
+      object:               item.object    || item.label || 'item',
+      material:             item.material  || 'unknown material',
+      category:             item.category  || 'unknown',
+      recyclable:           item.recyclable,
+      disposalInstructions: item.disposalInstructions || '',
+    };
+
+    chatMessages.innerHTML = '';
+    aiChatCard.classList.add('visible');
+    chatInput.value   = '';
+    chatSend.disabled = false;
+
+    const recyclableText = item.recyclable === true
+      ? 'recyclable'
+      : item.recyclable === false
+        ? 'not recyclable'
+        : 'recyclability unknown';
+
+    appendBubble(
+      `I've analysed your ${currentItemContext.object} — it's made of ${currentItemContext.material} and is ${recyclableText}. Ask me anything about recycling it, disposal options, or eco alternatives!`,
+      'assistant'
+    );
+  }
+
+  async function sendChatMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg || !currentItemContext) return;
+
+    chatInput.value   = '';
+    chatSend.disabled = true;
+    appendBubble(msg, 'user');
+
+    const loadingBubble = showLoadingBubble();
+
+    try {
+      const resp = await fetch('/api/ai-chat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ message: msg, itemContext: currentItemContext }),
+      });
+      const data = await resp.json();
+      loadingBubble.remove();
+      appendBubble(data.reply || data.error || "Couldn't generate a response. Try rephrasing.", 'assistant');
+    } catch {
+      loadingBubble.remove();
+      appendBubble('Network error. Please try again.', 'assistant');
+    } finally {
+      chatSend.disabled = false;
+      chatInput.focus();
+    }
+  }
+
+  chatSend.addEventListener('click', sendChatMessage);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
 
   // ── AR auto-detection loop ────────────────────────────────────────────────────
   let arTimer     = null;
@@ -395,6 +481,8 @@
     if (!scanCards) return;
     scanCards.innerHTML = '';
     scanCards.style.display = 'none';
+    if (aiChatCard) aiChatCard.classList.remove('visible');
+    currentItemContext = null;
   }
 
   // ── Scan ──────────────────────────────────────────────────────────────────────
@@ -528,6 +616,8 @@
       earnedText.textContent = '+10 ReGen Points earned';
       earnedEl.style.display = 'block';
     }
+
+    initAiChat(item);
   }
 
   function showPointsToast(total) {
