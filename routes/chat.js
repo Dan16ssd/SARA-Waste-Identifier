@@ -7,6 +7,17 @@ const HF_MODEL = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0';
 const HF_URL   = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
 const TIMEOUT_MS = 15000;
 
+function sanitiseCtx(ctx) {
+  const str = (v, max = 120) => String(v ?? '').slice(0, max).replace(/[\r\n]/g, ' ');
+  return {
+    object:               str(ctx.object),
+    material:             str(ctx.material),
+    category:             str(ctx.category),
+    recyclable:           ctx.recyclable,
+    disposalInstructions: str(ctx.disposalInstructions, 300),
+  };
+}
+
 function buildPrompt(message, ctx) {
   const recyclable = ctx.recyclable === true ? 'yes' : ctx.recyclable === false ? 'no' : 'unknown';
   const system =
@@ -60,10 +71,10 @@ router.post('/ai-chat', async (req, res) => {
 
   const apiKey = process.env.HF_API_KEY;
   if (!apiKey) {
-    return res.status(503).json({ error: 'AI assistant unavailable. Check your HF_API_KEY.' });
+    return res.status(500).json({ error: 'AI assistant unavailable. Check your HF_API_KEY.' });
   }
 
-  const prompt = buildPrompt(message.trim(), itemContext);
+  const prompt = buildPrompt(message.trim(), sanitiseCtx(itemContext));
 
   try {
     let { status, data } = await callHF(prompt, apiKey);
