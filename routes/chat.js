@@ -3,8 +3,8 @@
 const express = require('express');
 const router  = express.Router();
 
-const HF_MODEL = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0';
-const HF_URL   = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+const HF_MODEL = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0:featherless-ai';
+const HF_URL   = 'https://router.huggingface.co/v1/chat/completions';
 const TIMEOUT_MS = 15000;
 
 function sanitiseCtx(ctx) {
@@ -18,7 +18,7 @@ function sanitiseCtx(ctx) {
   };
 }
 
-function buildPrompt(message, ctx) {
+function buildMessages(message, ctx) {
   const recyclable = ctx.recyclable === true ? 'yes' : ctx.recyclable === false ? 'no' : 'unknown';
   const system =
     `You are SARA, a friendly recycling assistant. ` +
@@ -27,10 +27,13 @@ function buildPrompt(message, ctx) {
     `Disposal: ${ctx.disposalInstructions || 'no specific instructions'}. ` +
     `Answer recycling and eco questions helpfully and concisely. Keep replies under 3 sentences.`;
 
-  return `<|system|>\n${system}\n</s>\n<|user|>\n${message}\n</s>\n<|assistant|>\n`;
+  return [
+    { role: 'system', content: system },
+    { role: 'user',   content: message },
+  ];
 }
 
-async function callHF(prompt, apiKey) {
+async function callHF(messages, apiKey) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -42,13 +45,10 @@ async function callHF(prompt, apiKey) {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens:   200,
-          temperature:      0.7,
-          do_sample:        true,
-          return_full_text: false,
-        },
+        model:       HF_MODEL,
+        messages,
+        max_tokens:  200,
+        temperature: 0.7,
       }),
       signal: controller.signal,
     });
@@ -74,15 +74,17 @@ router.post('/ai-chat', async (req, res) => {
     return res.status(500).json({ error: 'AI assistant unavailable. Check your HF_API_KEY.' });
   }
 
-  const prompt = buildPrompt(message.trim(), sanitiseCtx(itemContext));
+  const messages = buildMessages(message.trim(), sanitiseCtx(itemContext));
 
   try {
-    let { status, data } = await callHF(prompt, apiKey);
+    let { status, data } = await callHF(messages, apiKey);
 
-    // One retry on cold-start 503
+    // One retry on cold-start / transient 503 (the router endpoint may not
+    // surface cold-starts the same way the legacy Inference API did, but we
+    // keep this as a safe no-op retry path in case a provider returns it).
     if (status === 503) {
       await new Promise(r => setTimeout(r, 3000));
-      ({ status, data } = await callHF(prompt, apiKey));
+      ({ status, data } = await callHF(messages, apiKey));
     }
 
     if (status === 503) {
@@ -92,8 +94,8 @@ router.post('/ai-chat', async (req, res) => {
       return res.status(502).json({ error: 'Something went wrong. Please try again.' });
     }
 
-    const reply = Array.isArray(data) && data[0] && data[0].generated_text
-      ? data[0].generated_text.trim()
+    const reply = data?.choices?.[0]?.message?.content
+      ? data.choices[0].message.content.trim()
       : null;
 
     if (!reply) {
