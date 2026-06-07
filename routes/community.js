@@ -172,4 +172,46 @@ router.delete('/posts/:postId', async (req, res) => {
   }
 });
 
+// ── Likes ─────────────────────────────────────────────────────────────────
+
+router.post('/posts/:postId/like', async (req, res) => {
+  const { postId } = req.params;
+  const { userId } = req.body || {};
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+  const db = getDb();
+  if (!db) return res.status(500).json({ error: 'Database unavailable' });
+
+  try {
+    const postRef = db.collection('posts').doc(postId);
+    const likeRef = db.collection('likes').doc(`${postId}_${userId}`);
+
+    const result = await db.runTransaction(async (t) => {
+      const [postDoc, likeDoc] = await Promise.all([t.get(postRef), t.get(likeRef)]);
+      if (!postDoc.exists) throw new Error('NOT_FOUND');
+
+      const current = postDoc.data().likeCount || 0;
+      let liked, likeCount;
+      if (likeDoc.exists) {
+        t.delete(likeRef);
+        likeCount = Math.max(0, current - 1);
+        t.update(postRef, { likeCount });
+        liked = false;
+      } else {
+        t.set(likeRef, { postId, userId, createdAt: new Date() });
+        likeCount = current + 1;
+        t.update(postRef, { likeCount });
+        liked = true;
+      }
+      return { liked, likeCount };
+    });
+
+    return res.json(result);
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') return res.status(404).json({ error: 'Post not found' });
+    console.error('POST /posts/:postId/like failed:', err.message);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 module.exports = router;
