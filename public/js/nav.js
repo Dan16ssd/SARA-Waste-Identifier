@@ -51,4 +51,19 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && nav.classList.contains('nav-open')) closeMenu();
   });
+
+  // ── Nav scroll effect — add .scrolled class when page is scrolled ─────────
+  let scrollTicking = false;
+  function onScroll() {
+    if (!scrollTicking) {
+      window.requestAnimationFrame(function () {
+        nav.classList.toggle('scrolled', window.scrollY > 40);
+        scrollTicking = false;
+      });
+      scrollTicking = true;
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  // Run once on load in case page loads scrolled (e.g. browser back)
+  onScroll();
 })();
