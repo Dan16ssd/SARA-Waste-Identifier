@@ -210,6 +210,197 @@
     }
   });
 
+  // ── Comments ───────────────────────────────────────────────────────────────
+  function renderComment(comment, mine) {
+    const row = document.createElement('div');
+    row.className = 'comment-item';
+    row.dataset.commentId = comment.id;
+    row.innerHTML =
+      '<span class="comment-author">' + escHtml(comment.authorName) + '</span>' +
+      '<span class="comment-time">' + escHtml(relativeTime(comment.createdAt)) + '</span>' +
+      (mine ? '<button class="comment-delete" title="Delete comment">🗑</button>' : '') +
+      '<span class="comment-text">' + escHtml(comment.text) + '</span>';
+    return row;
+  }
+
+  async function loadComments(postId, listEl, countEl) {
+    listEl.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">Loading…</p>';
+    try {
+      const resp = await fetch('/api/community/posts/' + encodeURIComponent(postId) + '/comments?limit=50');
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        listEl.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">Could not load comments.</p>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      if (data.comments.length === 0) {
+        listEl.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">No comments yet.</p>';
+      } else {
+        data.comments.forEach(c => listEl.appendChild(renderComment(c, c.authorId === userId)));
+      }
+      countEl.textContent = data.comments.length + (data.nextCursor ? '+' : '') + ' comments';
+    } catch (err) {
+      listEl.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">Network error loading comments.</p>';
+    }
+  }
+
+  async function submitComment(postId, input, listEl, countEl) {
+    const text = input.value.trim();
+    if (!text) return;
+
+    const ok = await ensureNickname();
+    if (!ok) return;
+
+    input.disabled = true;
+    try {
+      const resp = await fetch('/api/community/posts/' + encodeURIComponent(postId) + '/comments', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ userId, text }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        alert((data && data.error) || 'Could not post the comment.');
+        return;
+      }
+
+      input.value = '';
+      const empty = listEl.querySelector('p');
+      if (empty) empty.remove();
+      listEl.appendChild(renderComment(data, true));
+      const current = parseInt(countEl.textContent, 10) || 0;
+      countEl.textContent = (current + 1) + ' comments';
+    } catch (err) {
+      alert('Network error — could not post the comment.');
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── Card-level interactions (event delegation) ────────────────────────────
+  feedEl.addEventListener('click', async (e) => {
+    const card = e.target.closest('.post-card');
+    if (!card) return;
+    const postId = card.dataset.postId;
+
+    // Like toggle
+    if (e.target.closest('.like-btn')) {
+      const btn = e.target.closest('.like-btn');
+      btn.disabled = true;
+      const wasLiked = btn.classList.contains('liked');
+      const countEl  = btn.querySelector('.like-count');
+      const before   = parseInt(countEl.textContent, 10) || 0;
+
+      // Optimistic update
+      btn.classList.toggle('liked', !wasLiked);
+      countEl.textContent = wasLiked ? Math.max(0, before - 1) : before + 1;
+
+      try {
+        const resp = await fetch('/api/community/posts/' + encodeURIComponent(postId) + '/like', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ userId }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) throw new Error((data && data.error) || 'Like failed');
+
+        btn.classList.toggle('liked', data.liked);
+        countEl.textContent = data.likeCount;
+      } catch (err) {
+        // Revert optimistic update on failure
+        btn.classList.toggle('liked', wasLiked);
+        countEl.textContent = before;
+        alert(err.message || 'Could not update your like.');
+      } finally {
+        btn.disabled = false;
+      }
+      return;
+    }
+
+    // Toggle comments section
+    if (e.target.closest('.comment-toggle')) {
+      const section = card.querySelector('.comments-section');
+      const listEl  = card.querySelector('.comments-list');
+      const countEl = card.querySelector('.comment-count');
+      const isHidden = section.style.display === 'none';
+      section.style.display = isHidden ? 'block' : 'none';
+      if (isHidden && !listEl.dataset.loaded) {
+        listEl.dataset.loaded = '1';
+        await loadComments(postId, listEl, countEl);
+      }
+      return;
+    }
+
+    // Submit a comment
+    if (e.target.closest('.comment-submit')) {
+      const section = card.querySelector('.comments-section');
+      const input   = section.querySelector('.comment-input');
+      const listEl  = section.querySelector('.comments-list');
+      const countEl = card.querySelector('.comment-count');
+      await submitComment(postId, input, listEl, countEl);
+      return;
+    }
+
+    // Delete a comment
+    if (e.target.closest('.comment-delete')) {
+      const row = e.target.closest('.comment-item');
+      const commentId = row.dataset.commentId;
+      if (!confirm('Delete this comment?')) return;
+      try {
+        const resp = await fetch('/api/community/comments/' + encodeURIComponent(commentId), {
+          method:  'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ userId }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) {
+          alert((data && data.error) || 'Could not delete the comment.');
+          return;
+        }
+        row.remove();
+        const countEl = card.querySelector('.comment-count');
+        const current = parseInt(countEl.textContent, 10) || 0;
+        countEl.textContent = Math.max(0, current - 1) + ' comments';
+      } catch (err) {
+        alert('Network error — could not delete the comment.');
+      }
+      return;
+    }
+
+    // Delete a post
+    if (e.target.closest('.post-delete')) {
+      if (!confirm('Delete this post? This also removes its comments and likes.')) return;
+      try {
+        const resp = await fetch('/api/community/posts/' + encodeURIComponent(postId), {
+          method:  'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ userId }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) {
+          alert((data && data.error) || 'Could not delete the post.');
+          return;
+        }
+        card.remove();
+        feedEmptyEl.style.display = (feedEl.children.length === 0) ? 'block' : 'none';
+      } catch (err) {
+        alert('Network error — could not delete the post.');
+      }
+      return;
+    }
+  });
+
+  // Submit a comment via Enter key
+  feedEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('comment-input')) {
+      e.preventDefault();
+      const card = e.target.closest('.post-card');
+      card.querySelector('.comment-submit').click();
+    }
+  });
+
   loadMoreBtn.addEventListener('click', () => loadFeed(false));
 
   // ── Init ───────────────────────────────────────────────────────────────────
