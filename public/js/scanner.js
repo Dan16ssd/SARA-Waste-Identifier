@@ -113,7 +113,13 @@
   const btnScan      = document.getElementById('btn-scan');
   const locationInput = document.getElementById('location-input');
   const spinner      = document.getElementById('spinner');
-  const errorMsg     = document.getElementById('error-msg');
+  const cameraStatus   = document.getElementById('camera-status');
+  const cameraErrBlock = document.getElementById('camera-error-block');
+  const cameraErrText  = document.getElementById('camera-err-text');
+  const btnCameraRetry = document.getElementById('btn-camera-retry');
+  const shutterOverlay = document.getElementById('shutter-overlay');
+  const scanProgress   = document.getElementById('scan-progress');
+  const errorMsg      = document.getElementById('error-msg');
   const scanCards    = document.getElementById('scan-cards');
   const aiChatCard  = document.getElementById('ai-chat-card');
   const chatMessages = document.getElementById('chat-messages');
@@ -312,9 +318,17 @@
 
   // ── Camera ────────────────────────────────────────────────────────────────────
   btnCamera.addEventListener('click', async () => {
+    // Show status while requesting
+    cameraErrBlock.classList.remove('visible');
+    cameraStatus.textContent = 'Requesting camera access…';
+    cameraStatus.classList.add('visible');
+    btnCamera.disabled = true;
+
     try {
       if (cameraStream) stopCamera();
       cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      cameraStatus.classList.remove('visible');
+      btnCamera.disabled = false;
       video.srcObject = cameraStream;
       video.style.display = 'block';
       canvas.style.display = 'none';
@@ -329,9 +343,21 @@
       clearCards();
       clearError();
       startArLoop();
-    } catch {
-      showError('Camera access denied or unavailable. Please upload an image instead.');
+    } catch (err) {
+      cameraStatus.classList.remove('visible');
+      const isPermissionDenied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
+      cameraErrText.textContent = isPermissionDenied
+        ? 'Camera access was denied. Please allow camera permission in your browser settings and try again.'
+        : 'No camera found or camera is unavailable. Please upload an image instead.';
+      cameraErrBlock.classList.add('visible');
+      btnCamera.disabled = false;
     }
+  });
+
+  // Camera retry button
+  btnCameraRetry.addEventListener('click', () => {
+    cameraErrBlock.classList.remove('visible');
+    btnCamera.click();
   });
 
   // ── File upload ───────────────────────────────────────────────────────────────
@@ -342,6 +368,8 @@
     if (!file) return;
     currentMimeType = file.type || 'image/jpeg';
     stopCamera();
+    cameraErrBlock.classList.remove('visible');
+    cameraStatus.classList.remove('visible');
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -500,6 +528,11 @@
       video.style.display  = 'none';
       arScanner.style.display = 'none';
       stopCamera();
+
+      // Trigger shutter flash animation
+      shutterOverlay.classList.remove('flash');
+      void shutterOverlay.offsetWidth; // force reflow
+      shutterOverlay.classList.add('flash');
     }
 
     if (!frozenFrame) return;
@@ -544,6 +577,7 @@
       }
 
       detectStatus.style.display = 'none';
+      scanProgress.style.display = 'none';
       buildCards(items);
       items.forEach((item) => addLogEntry(item, locationName));
 
@@ -558,6 +592,7 @@
       showPointsToast(newTotal);
     } catch (err) {
       detectStatus.style.display = 'none';
+      scanProgress.style.display = 'none';
       showError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -576,6 +611,7 @@
   function setLoading(on) {
     btnScan.disabled = on;
     spinner.classList.toggle('active', on);
+    scanProgress.style.display = on ? 'flex' : 'none';
   }
 
   function showResult(item, idx) {

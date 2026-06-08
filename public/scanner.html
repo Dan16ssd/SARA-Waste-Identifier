@@ -34,6 +34,12 @@
       <input type="file" id="file-input" accept="image/*" />
     </div>
 
+    <div class="camera-status" id="camera-status"></div>
+    <div class="camera-error-block" id="camera-error-block">
+      <p class="err-text" id="camera-err-text">Camera access was denied. Please allow camera permission in your browser settings and try again.</p>
+      <button class="btn btn-upload btn-retry" id="btn-camera-retry">Try Again</button>
+    </div>
+
     <div id="camera-wrap">
       <video id="video" autoplay playsinline style="display:none;"></video>
       <canvas id="canvas" style="display:none;"></canvas>
@@ -51,6 +57,13 @@
           <div class="ar-ch-v"></div>
           <div class="ar-ch-h"></div>
         </div>
+      </div>
+
+      <div class="shutter-overlay" id="shutter-overlay"></div>
+      <div class="scan-progress-overlay" id="scan-progress" style="display:none;">
+        <div class="progress-spinner"></div>
+        <div class="progress-label">Analyzing your item…</div>
+        <div class="progress-scan-line"></div>
       </div>
 
       <div id="detect-status" style="display:none;"></div>
