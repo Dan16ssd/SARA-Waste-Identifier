@@ -28,29 +28,87 @@
     <h1 class="hero-title">SARA</h1>
     <p class="hero-subtitle">Sustainable Analytics Recycling Assistant</p>
     <p class="hero-tagline">Scan it. Sort it. Recycle it right — and earn points doing it.</p>
-    <a href="/scanner.html" class="btn btn-primary hero-cta">Get Started &rarr;</a>
+    <div class="hero-cta-row">
+      <a href="/scanner.html" class="btn btn-primary hero-cta">Get Started &rarr;</a>
+      <a href="#how-it-works" class="btn btn-ghost hero-cta-secondary">How It Works</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><span class="hero-stat-num">300+</span><span class="hero-stat-label">Scans Daily</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">12</span><span class="hero-stat-label">Material Types</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">95%</span><span class="hero-stat-label">AI Accuracy</span></div>
+    </div>
   </div>
   <div class="hero-visual">
-    <svg class="hero-mockup" viewBox="0 0 260 440" xmlns="http://www.w3.org/2000/svg">
-      <rect x="14" y="4" width="232" height="432" rx="28" fill="var(--forest)" stroke="var(--leaf)" stroke-width="2"/>
-      <rect x="22" y="14" width="216" height="412" rx="22" fill="#0c1c13"/>
-      <rect x="64" y="60" width="132" height="176" rx="12" fill="none" stroke="rgba(74,222,128,0.35)" stroke-width="1.5"/>
-      <rect x="74" y="70" width="24" height="24" rx="3" fill="none" stroke="rgba(74,222,128,0.5)" stroke-width="1.5"/>
-      <rect x="74" y="202" width="24" height="24" rx="3" fill="none" stroke="rgba(74,222,128,0.5)" stroke-width="1.5"/>
-      <rect x="162" y="70" width="24" height="24" rx="3" fill="none" stroke="rgba(74,222,128,0.5)" stroke-width="1.5"/>
-      <rect x="162" y="202" width="24" height="24" rx="3" fill="none" stroke="rgba(74,222,128,0.5)" stroke-width="1.5"/>
-      <line x1="74" y1="146" x2="186" y2="146" stroke="rgba(74,222,128,0.25)" stroke-width="1" stroke-dasharray="4,6"/>
-      <circle cx="130" cy="148" r="3" fill="rgba(74,222,128,0.4)"/>
-      <rect x="80" y="270" width="100" height="8" rx="4" fill="rgba(150,196,170,0.15)"/>
-      <rect x="80" y="288" width="76" height="8" rx="4" fill="rgba(150,196,170,0.1)"/>
-      <rect x="80" y="310" width="100" height="8" rx="4" fill="rgba(150,196,170,0.1)"/>
-      <circle cx="130" cy="420" r="14" fill="none" stroke="rgba(150,196,170,0.2)" stroke-width="1.5"/>
-      <rect x="123" y="413" width="14" height="14" rx="7" fill="rgba(150,196,170,0.3)"/>
+    <div class="hero-mockup-glow"></div>
+    <svg class="hero-mockup" viewBox="0 0 260 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0a1f15"/>
+          <stop offset="100%" stop-color="#0c1c13"/>
+        </linearGradient>
+        <linearGradient id="scanLineGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="transparent"/>
+          <stop offset="50%" stop-color="rgba(74,222,128,0.9)"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </linearGradient>
+      </defs>
+      <!-- Phone body -->
+      <rect x="14" y="4" width="232" height="492" rx="30" fill="var(--forest)" stroke="var(--leaf)" stroke-width="2.5"/>
+      <!-- Screen -->
+      <rect x="24" y="18" width="212" height="464" rx="22" fill="url(#screenGrad)"/>
+      <!-- Status bar -->
+      <rect x="24" y="18" width="212" height="36" rx="22" fill="none"/>
+      <rect x="24" y="52" width="212" height="2" fill="none" stroke="rgba(74,222,128,0.1)" stroke-width="0.5"/>
+      <!-- Camera preview area -->
+      <rect x="40" y="68" width="180" height="200" rx="14" fill="none" stroke="rgba(74,222,128,0.3)" stroke-width="1.5" stroke-dasharray="0"/>
+      <!-- AR corner brackets -->
+      <path d="M56 84 L56 70 L70 70" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M204 84 L204 70 L190 70" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M56 252 L56 266 L70 266" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M204 252 L204 266 L190 266" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
+      <!-- Scanning item silhouette -->
+      <rect x="95" y="110" width="70" height="90" rx="8" fill="none" stroke="rgba(74,222,128,0.25)" stroke-width="1"/>
+      <rect x="105" y="115" width="50" height="80" rx="4" fill="rgba(74,222,128,0.06)"/>
+      <!-- Scan line -->
+      <line x1="56" y1="168" x2="204" y2="168" stroke="url(#scanLineGrad)" stroke-width="1.5">
+        <animate attributeName="y1" from="84" to="266" dur="2.8s" repeatCount="indefinite"/>
+        <animate attributeName="y2" from="84" to="266" dur="2.8s" repeatCount="indefinite"/>
+      </line>
+      <!-- Detection pill -->
+      <rect x="90" y="260" width="80" height="20" rx="10" fill="rgba(0,0,0,0.7)" stroke="rgba(74,222,128,0.4)" stroke-width="1"/>
+      <text x="130" y="274" text-anchor="middle" fill="rgba(74,222,128,0.85)" font-size="9" font-weight="600" font-family="Syne,sans-serif" letter-spacing="0.5">PLASTIC BOTTLE</text>
+      <!-- Result card -->
+      <rect x="36" y="294" width="188" height="110" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(150,196,170,0.2)" stroke-width="1"/>
+      <!-- Result rows -->
+      <rect x="48" y="306" width="60" height="6" rx="3" fill="rgba(150,196,170,0.12)"/>
+      <rect x="120" y="306" width="92" height="6" rx="3" fill="rgba(150,196,170,0.2)"/>
+      <rect x="48" y="320" width="50" height="6" rx="3" fill="rgba(150,196,170,0.12)"/>
+      <rect x="120" y="320" width="80" height="6" rx="3" fill="rgba(150,196,170,0.2)"/>
+      <rect x="48" y="334" width="56" height="6" rx="3" fill="rgba(150,196,170,0.12)"/>
+      <rect x="120" y="334" width="70" height="6" rx="3" fill="rgba(150,196,170,0.2)"/>
+      <!-- Recyclable badge -->
+      <rect x="48" y="348" width="64" height="18" rx="9" fill="rgba(42,122,75,0.2)" stroke="rgba(42,122,75,0.35)" stroke-width="1"/>
+      <text x="80" y="361" text-anchor="middle" fill="rgba(42,122,75,0.85)" font-size="8" font-weight="700" font-family="Syne,sans-serif">RECYCLABLE</text>
+      <!-- Buttons row -->
+      <rect x="48" y="376" width="84" height="22" rx="11" fill="var(--leaf)" opacity="0.3"/>
+      <text x="90" y="391" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="8" font-weight="700" font-family="Syne,sans-serif">Use Camera</text>
+      <rect x="140" y="376" width="84" height="22" rx="11" fill="rgba(150,196,170,0.1)" stroke="rgba(150,196,170,0.3)" stroke-width="1"/>
+      <text x="182" y="391" text-anchor="middle" fill="rgba(150,196,170,0.7)" font-size="8" font-weight="700" font-family="Syne,sans-serif">Upload</text>
+      <!-- Bottom CTA -->
+      <rect x="56" y="414" width="148" height="24" rx="12" fill="rgba(74,222,128,0.1)" stroke="rgba(74,222,128,0.15)" stroke-width="1"/>
+      <text x="130" y="430" text-anchor="middle" fill="rgba(74,222,128,0.5)" font-size="8" font-weight="600" font-family="Syne,sans-serif" letter-spacing="0.5">Scan Material</text>
+      <!-- Home indicator -->
+      <rect x="86" y="454" width="88" height="4" rx="2" fill="rgba(150,196,170,0.25)"/>
+      <!-- Notification dot -->
+      <circle cx="130" cy="460" r="3" fill="rgba(74,222,128,0.15)">
+        <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.15;0.4;0.15" dur="2s" repeatCount="indefinite"/>
+      </circle>
     </svg>
   </div>
 </section>
 
-<section class="how-it-works">
+<section class="how-it-works" id="how-it-works">
   <div class="how-it-works-grid">
     <div class="how-it-works-step">
       <span class="how-it-works-icon">

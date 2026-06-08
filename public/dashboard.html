@@ -27,7 +27,7 @@
 </nav>
 
 <div class="page" style="max-width: 1200px;">
-  <h1>🗺️ Campus Waste Intelligence</h1>
+  <h1><svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-5px; margin-right:6px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="var(--leaf)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="9" r="2.5" fill="var(--leaf)"/></svg>Campus Waste Intelligence</h1>
 
   <!-- Time filter tabs -->
   <div class="time-tabs">
@@ -58,7 +58,7 @@
 
   <!-- Hotspot card -->
   <div class="card hotspot-card" id="hotspot-card" style="display:none;">
-    <span class="hotspot-icon">🔥</span>
+    <span class="hotspot-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2c-1.5 4-4 7-4 11a4 4 0 0 0 8 0c0-4-2.5-7-4-11z" fill="var(--amber)" opacity="0.85"/><path d="M12 16a3 3 0 0 1-3-3c0-2.5 1.5-5 3-7 1.5 2 3 4.5 3 7a3 3 0 0 1-3 3z" fill="var(--amber)"/></svg></span>
     <div>
       <div class="hotspot-label">Waste Hotspot</div>
       <div id="hotspot-text" class="hotspot-text">—</div>
@@ -69,10 +69,10 @@
   <div class="map-chart-row">
     <div class="card map-card">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-        <h2 style="color:var(--green-dark); margin:0;">📍 Scan Locations</h2>
+        <h2 style="color:var(--green-dark); margin:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:6px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="9" r="2.5" fill="currentColor"/></svg>Scan Locations</h2>
         <div class="map-toggle">
           <button class="map-toggle-btn active" data-mode="markers">● Markers</button>
-          <button class="map-toggle-btn" data-mode="heatmap">🌡 Heatmap</button>
+          <button class="map-toggle-btn" data-mode="heatmap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:4px;"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>Heatmap</button>
         </div>
       </div>
       <div id="map"></div>
@@ -87,12 +87,12 @@
     </div>
 
     <div class="card chart-card">
-      <h2 style="margin-bottom:12px; color:var(--green-dark);">♻️ By Category</h2>
+      <h2 style="margin-bottom:12px; color:var(--green-dark);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:6px;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M16.24 7.76l-8.48 8.48" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7.76 7.76l8.48 8.48" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/></svg>By Category</h2>
       <div class="chart-wrap">
         <canvas id="pie-chart"></canvas>
       </div>
       <div id="chart-empty" style="display:none; text-align:center; color:var(--muted); padding:60px 0 40px;">
-        <div style="font-size:2rem;">🌿</div>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.45;"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5a4 4 0 0 0 4 4c1.1 0 2.1-.45 2.83-1.17" stroke="var(--leaf)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         <p style="margin-top:8px;">No scans yet.<br/>Start scanning to see data here!</p>
       </div>
     </div>
@@ -100,7 +100,7 @@
 
   <!-- Firebase not configured warning -->
   <div id="firebase-warning" class="card" style="display:none; border-left:4px solid var(--yellow); background:#fffbf0;">
-    <h3 style="color:#b26a00; margin-bottom:8px;">⚙️ Firebase Not Connected</h3>
+    <h3 style="color:#b26a00; margin-bottom:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px; margin-right:6px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.5"/></svg>Firebase Not Connected</h3>
     <p style="color:var(--muted); font-size:0.9rem;">
       Add your Firebase credentials to <code>.env</code> to enable the live map.<br/>
       See the setup instructions in the README.

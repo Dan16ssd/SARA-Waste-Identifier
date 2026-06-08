@@ -121,7 +121,10 @@
   const cameraErrText  = document.getElementById('camera-err-text');
   const btnCameraRetry = document.getElementById('btn-camera-retry');
   const shutterOverlay = document.getElementById('shutter-overlay');
+  const shutterIris    = document.getElementById('shutter-iris');
   const scanProgress   = document.getElementById('scan-progress');
+  const progressLabel  = document.getElementById('progress-label');
+  const progressStage  = document.getElementById('progress-stage');
 
   async function checkCameraPermission() {
     try {
@@ -130,20 +133,31 @@
       if (status.state === 'granted') {
         cameraStatus.classList.remove('visible');
         btnCamera.disabled = false;
-        // attempt to start camera if allowed (may require user gesture in some browsers)
-        try { btnCamera.click(); } catch (e) {}
+        // Auto-start camera if permission already granted (instant-on experience)
+        btnCamera.click();
       } else if (status.state === 'prompt') {
-        cameraStatus.textContent = 'Tap "Use Camera" to allow access';
+        cameraStatus.textContent = 'Tap "Use Camera" to allow camera access';
         cameraStatus.classList.add('visible');
+        btnCamera.disabled = false;
       } else {
-        cameraErrText.textContent = 'Camera access is blocked — enable it in browser settings.';
+        cameraErrText.textContent = 'Camera access is blocked — enable it in your browser settings and try again.';
         cameraErrBlock.classList.add('visible');
+        btnCamera.disabled = false;
       }
       status.onchange = () => {
-        if (status.state === 'granted') { btnCamera.click(); cameraErrBlock.classList.remove('visible'); cameraStatus.classList.remove('visible'); }
+        if (status.state === 'granted') {
+          cameraErrBlock.classList.remove('visible');
+          cameraStatus.classList.remove('visible');
+          btnCamera.click();
+        } else if (status.state === 'denied') {
+          cameraErrText.textContent = 'Camera access was denied. Please allow camera permission in your browser settings and try again.';
+          cameraErrBlock.classList.add('visible');
+        }
       };
     } catch (e) {
-      // permissions API may not be available — ignore
+      // Permissions API may not be available — fall through to manual trigger
+      cameraStatus.textContent = 'Tap "Use Camera" to start scanning';
+      cameraStatus.classList.add('visible');
     }
   }
 
@@ -286,7 +300,8 @@
     detectStatus.textContent = 'Scanning…';
     detectStatus.classList.add('scanning');
     detectStatus.style.display = 'block';
-    if (scanProgress) scanProgress.style.display = 'flex';
+    if (scanProgress) { scanProgress.style.display = 'flex'; }
+    if (progressStage) { progressStage.textContent = 'Detecting objects…'; }
 
     const controller = new AbortController();
     const abortTimer = setTimeout(() => controller.abort(), 15000);
@@ -561,13 +576,19 @@
       arScanner.style.display = 'none';
       stopCamera();
 
-      // Trigger shutter flash animation
+      // Trigger shutter flash + iris animation
       shutterOverlay.classList.remove('flash');
       void shutterOverlay.offsetWidth; // force reflow
       shutterOverlay.classList.add('flash');
+      if (shutterIris) {
+        shutterIris.classList.remove('animate');
+        void shutterIris.offsetWidth;
+        shutterIris.classList.add('animate');
+      }
     }
 
     if (!frozenFrame) return;
+    if (progressStage) progressStage.textContent = 'Capturing image…';
     setLoading(true);
     clearError();
     clearCards();
@@ -577,6 +598,7 @@
 
     detectStatus.textContent   = 'Analyzing items…';
     detectStatus.style.display = 'block';
+    if (progressStage) progressStage.textContent = 'AI analyzing material…';
 
     try {
       const resp = await fetch('/api/scan', {
@@ -610,6 +632,7 @@
 
       detectStatus.style.display = 'none';
       scanProgress.style.display = 'none';
+      if (progressStage) progressStage.textContent = 'Capturing image…';
       buildCards(items);
       items.forEach((item) => addLogEntry(item, locationName));
 

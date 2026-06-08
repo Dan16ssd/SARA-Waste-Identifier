@@ -119,14 +119,14 @@
       '<div class="post-header">' +
         '<span class="post-author">' + escHtml(post.authorName) + '</span>' +
         '<span class="post-time">' + escHtml(relativeTime(post.createdAt)) + '</span>' +
-        (isMine ? '<button class="post-delete" title="Delete post">🗑</button>' : '') +
+        (isMine ? '<button class="post-delete" title="Delete post"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>' : '') +
       '</div>' +
       '<p class="post-text">' + escHtml(post.text) + '</p>' +
       '<div class="post-actions">' +
         '<button class="like-btn' + (post.likedByMe ? ' liked' : '') + '">' +
-          '♥ <span class="like-count">' + post.likeCount + '</span>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px; margin-right:2px;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> <span class="like-count">' + post.likeCount + '</span>' +
         '</button>' +
-        '<button class="comment-toggle">💬 <span class="comment-count">comments</span></button>' +
+        '<button class="comment-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px; margin-right:3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> <span class="comment-count">comments</span></button>' +
       '</div>' +
       '<div class="comments-section" style="display:none;">' +
         '<div class="comments-list"></div>' +
@@ -218,7 +218,7 @@
     row.innerHTML =
       '<span class="comment-author">' + escHtml(comment.authorName) + '</span>' +
       '<span class="comment-time">' + escHtml(relativeTime(comment.createdAt)) + '</span>' +
-      (mine ? '<button class="comment-delete" title="Delete comment">🗑</button>' : '') +
+      (mine ? '<button class="comment-delete" title="Delete comment"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>' : '') +
       '<span class="comment-text">' + escHtml(comment.text) + '</span>';
     return row;
   }

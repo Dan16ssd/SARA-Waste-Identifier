@@ -4,6 +4,33 @@
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Focus visibility for keyboard navigation ───────────────────────────── */
+:focus-visible {
+  outline: 2.5px solid var(--leaf);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+button:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 2.5px solid var(--leaf);
+  outline-offset: 3px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2.5px solid var(--leaf);
+  outline-offset: 1px;
+  border-color: var(--leaf) !important;
+}
+
+/* Remove focus outline for mouse clicks but keep for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 :root {
   --sage-50:    #f3faf5;
   --sage-100:   #e2f2e8;
@@ -471,6 +498,28 @@ select:focus {
   animation: shutter-flash 0.35s ease-out;
 }
 
+/* ── Shutter iris animation ──────────────────────────────────────────────── */
+.shutter-iris {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  border-radius: var(--radius-lg);
+  opacity: 0;
+  background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.95) 100%);
+}
+
+.shutter-iris.animate {
+  animation: shutter-iris 0.45s ease-in-out;
+}
+
+@keyframes shutter-iris {
+  0%   { opacity: 0; clip-path: circle(100%); }
+  30%  { opacity: 1; clip-path: circle(40%); }
+  70%  { opacity: 1; clip-path: circle(40%); }
+  100% { opacity: 0; clip-path: circle(100%); }
+}
+
 /* ── Scanner — Analyzing progress overlay ──────────────────────────────────── */
 @keyframes scan-line-move {
   0%   { top: 0; opacity: 0.6; }
@@ -497,6 +546,21 @@ select:focus {
   font-weight: 600;
   font-size: 0.9rem;
   letter-spacing: 0.04em;
+}
+
+.scan-progress-overlay .progress-stage {
+  color: rgba(74,222,128,0.85);
+  font-family: 'Syne', sans-serif;
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  animation: stagePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes stagePulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
 }
 
 .scan-progress-overlay .progress-scan-line {
@@ -1659,12 +1723,15 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .hero-mockup {
   width: 200px;
   height: auto;
   filter: drop-shadow(0 12px 32px rgba(22,46,30,0.18));
+  position: relative;
+  z-index: 1;
 }
 
 .hero-logo {
@@ -1706,6 +1773,74 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
 .hero-cta {
   font-size: 0.9rem;
   padding: 14px 36px;
+}
+
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--leaf);
+  border: 1.5px solid var(--sage-200);
+  box-shadow: none;
+}
+.btn-ghost:hover {
+  background: var(--sage-100);
+  border-color: var(--sage-300);
+  box-shadow: none;
+}
+
+.hero-cta-secondary {
+  font-size: 0.82rem;
+  padding: 12px 28px;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hero-stat-num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--forest);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.hero-stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero-mockup-glow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(42,122,75,0.12) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ── Landing page — How it works ──────────────────────────────────────────── */
@@ -1844,6 +1979,9 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
   }
   .hero-tagline { max-width: 100%; }
   .hero-mockup { width: 160px; }
+  .hero-mockup-glow { width: 240px; height: 240px; }
+  .hero-stats { justify-content: center; }
+  .hero-cta-row { justify-content: center; }
 }
 
 @media (max-width: 600px) {
@@ -1869,14 +2007,21 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
   .hero { padding: 40px 16px 32px; }
   .hero-logo { width: 56px; height: 56px; }
   .hero-mockup { width: 140px; }
+  .hero-mockup-glow { width: 180px; height: 180px; }
   .hero-cta { width: 100%; justify-content: center; }
+  .hero-cta-secondary { width: 100%; justify-content: center; }
+  .hero-cta-row { width: 100%; }
+  .hero-stats { gap: 20px; }
+  .hero-stat-num { font-size: 1.2rem; }
   .final-cta .btn { width: 100%; justify-content: center; }
 }
 
 /* Desktop: emphasize mockup on right and hide small logo */
 @media (min-width: 960px) {
   .hero-logo { display: none; }
-  .hero-mockup { width: 340px; }
+  .hero-mockup { width: 260px; }
+  .hero-mockup-glow { width: 320px; height: 320px; }
   .hero { align-items: center; gap: 64px; }
   .hero-content { max-width: 520px; }
+  .hero-visual { padding-left: 24px; }
 }

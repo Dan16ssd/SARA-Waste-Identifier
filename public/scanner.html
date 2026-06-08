@@ -29,21 +29,21 @@
 
   <div class="card">
     <div class="btn-row">
-      <button class="btn btn-primary" id="btn-camera">Use Camera</button>
-      <button class="btn btn-secondary" id="btn-upload">Upload Image</button>
+      <button class="btn btn-primary" id="btn-camera" aria-label="Open camera to scan items"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:6px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>Use Camera</button>
+      <button class="btn btn-secondary" id="btn-upload" aria-label="Upload an image to scan">Upload Image</button>
       <input type="file" id="file-input" accept="image/*" />
     </div>
 
-    <div class="camera-status" id="camera-status"></div>
+    <div class="camera-status" id="camera-status" role="status" aria-live="polite"></div>
     <div class="camera-error-block" id="camera-error-block">
       <p class="err-text" id="camera-err-text">Camera access was denied. Please allow camera permission in your browser settings and try again.</p>
       <button class="btn btn-upload btn-retry" id="btn-camera-retry">Try Again</button>
     </div>
 
-    <div id="camera-wrap">
-      <video id="video" autoplay playsinline style="display:none;"></video>
-      <canvas id="canvas" style="display:none;"></canvas>
-      <img id="preview" alt="Preview" style="display:none;" />
+    <div id="camera-wrap" role="region" aria-label="Camera viewfinder">
+      <video id="video" autoplay playsinline style="display:none;" aria-hidden="true"></video>
+      <canvas id="canvas" style="display:none;" aria-hidden="true"></canvas>
+      <img id="preview" alt="Preview of captured item" style="display:none;" />
 
       <canvas id="ar-overlay"></canvas>
 
@@ -60,13 +60,15 @@
       </div>
 
       <div class="shutter-overlay" id="shutter-overlay"></div>
-      <div class="scan-progress-overlay" id="scan-progress" style="display:none;">
+      <div class="shutter-iris" id="shutter-iris" aria-hidden="true"></div>
+      <div class="scan-progress-overlay" id="scan-progress" style="display:none;" role="status" aria-live="assertive">
         <div class="progress-spinner"></div>
-        <div class="progress-label">Analyzing your item…</div>
+        <div class="progress-label" id="progress-label">Analyzing your item…</div>
+        <div class="progress-stage" id="progress-stage">Capturing image…</div>
         <div class="progress-scan-line"></div>
       </div>
 
-      <div id="detect-status" style="display:none;"></div>
+      <div id="detect-status" style="display:none;" role="status" aria-live="polite"></div>
       <p id="placeholder-text">Point camera at an item or upload a photo</p>
     </div>
 
@@ -79,7 +81,7 @@
       <p id="gps-status" class="gps-status">GPS will be captured automatically when you scan.</p>
     </div>
 
-    <button class="btn btn-scan" id="btn-scan" disabled>Scan Material</button>
+    <button class="btn btn-scan" id="btn-scan" disabled aria-label="Scan the captured material">Scan Material</button>
     <div class="spinner" id="spinner" style="margin-top:16px;"></div>
     <div class="error-msg" id="error-msg"></div>
   </div>

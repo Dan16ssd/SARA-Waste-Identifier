@@ -17,11 +17,11 @@
       (pos) => {
         document.getElementById('reg-lat').value = pos.coords.latitude.toFixed(6);
         document.getElementById('reg-lng').value  = pos.coords.longitude.toFixed(6);
-        btnGps.textContent = '✅ GPS Set';
+        btnGps.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:4px;"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>GPS Set';
         btnGps.disabled = false;
       },
       () => {
-        btnGps.textContent = '📍 Use GPS';
+        btnGps.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:4px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="9" r="2.5" fill="currentColor"/></svg>Use GPS';
         btnGps.disabled = false;
         alert('GPS denied or unavailable. Enter coordinates manually.');
       },
@@ -73,7 +73,7 @@
   btnCopy && btnCopy.addEventListener('click', () => {
     const code = document.getElementById('result-join-code').textContent;
     navigator.clipboard.writeText(code).then(() => {
-      btnCopy.textContent = '✅ Copied!';
+      btnCopy.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:4px;"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>Copied!';
       setTimeout(() => { btnCopy.textContent = 'Copy Code'; }, 2000);
     });
   });

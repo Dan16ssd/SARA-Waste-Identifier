@@ -83,7 +83,7 @@
           }
           // Update page title with org name
           const h1 = document.querySelector('h1');
-          if (h1 && org.name) h1.textContent = '🗺️ ' + org.name + ' — Waste Intelligence';
+          if (h1 && org.name) h1.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-5px; margin-right:6px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="var(--leaf)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="9" r="2.5" fill="var(--leaf)"/></svg>' + org.name + ' \u2014 Waste Intelligence';
         }
       } catch { /* fall back to world view */ }
     }
@@ -390,16 +390,16 @@
   async function init() {
     const pts   = parseInt(localStorage.getItem('sara_points') || '0', 10);
     const badge = document.getElementById('points-badge');
-    if (badge) badge.textContent = '🌱 ' + pts + ' pts';
+    if (badge) badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px; margin-right:3px;"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5a4 4 0 0 0 4 4c1.1 0 2.1-.45 2.83-1.17" stroke="var(--leaf)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>' + pts + ' pts';
 
     await initMap();
 
     // Show org context in header
     const h1 = document.querySelector('h1');
     if (orgId && orgName && h1 && !h1.textContent.includes(orgName)) {
-      h1.textContent = '🗺️ ' + orgName + ' — Waste Intelligence';
+      h1.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-5px; margin-right:6px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="var(--leaf)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="9" r="2.5" fill="var(--leaf)"/></svg>' + orgName + ' \u2014 Waste Intelligence';
     } else if (!orgId && h1) {
-      h1.textContent = '🌍 Global Public Scan Map';
+      h1.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-5px; margin-right:6px;"><circle cx="12" cy="12" r="10" stroke="var(--leaf)" stroke-width="1.5" fill="none"/><ellipse cx="12" cy="12" rx="4" ry="10" stroke="var(--leaf)" stroke-width="1.5" fill="none"/><line x1="2" y1="12" x2="22" y2="12" stroke="var(--leaf)" stroke-width="1.5"/></svg>Global Public Scan Map';
     }
 
     document.querySelectorAll('.tab').forEach(btn => {
