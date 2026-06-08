@@ -64,10 +64,11 @@ textarea:focus-visible {
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* ── Soft float (ambient) ───────────────────────────────────────────────── */
+/* ── Soft float (ambient, with subtle motion blur at peaks) ─────────── */
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-10px); }
+  0%, 100% { transform: translateY(0);    filter: blur(0); }
+  40%      { transform: translateY(-12px); filter: blur(0.6px); }
+  60%      { transform: translateY(-12px); filter: blur(0.6px); }
 }
 
 /* ── Glow pulse ─────────────────────────────────────────────────────────── */
@@ -98,6 +99,34 @@ textarea:focus-visible {
 @keyframes cardReveal {
   from { opacity: 0; transform: translateY(32px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Motion-blurred entrance variants (cinematic feel) ────────────────── */
+@keyframes fadeUpBlur {
+  from { opacity: 0; transform: translateY(36px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+
+@keyframes fadeLeftBlur {
+  from { opacity: 0; transform: translateX(-48px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateX(0);     filter: blur(0); }
+}
+
+@keyframes fadeRightBlur {
+  from { opacity: 0; transform: translateX(48px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateX(0);    filter: blur(0); }
+}
+
+@keyframes scaleInBlur {
+  from { opacity: 0; transform: scale(0.82); filter: blur(4px); }
+  to   { opacity: 1; transform: scale(1);     filter: blur(0); }
+}
+
+/* ── Smooth motion-blur backdrop for fast-moving elements ──────────────── */
+@keyframes motionBlurIn {
+  0%   { filter: blur(12px); opacity: 0; }
+  40%  { filter: blur(4px);  opacity: 0.6; }
+  100% { filter: blur(0);    opacity: 1; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -151,6 +180,57 @@ textarea:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+
+  /* Disable View Transitions API cross-fades */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+
+  /* Suppress motion blur filters */
+  .hero-logo,
+  .hero-title,
+  .hero-subtitle,
+  .hero-tagline,
+  .hero-cta-row,
+  .hero-stats,
+  .hero-mockup {
+    filter: none !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   View Transitions API — cross-fade between page navigations
+   Supported in Chrome 111+, Edge 111+. Graceful fallback elsewhere.
+   ════════════════════════════════════════════════════════════════════════════ */
+@view-transition {
+  navigation: auto;
+}
+
+/* Customize the cross-fade to feel smoother */
+::view-transition-old(root) {
+  animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both fadeOutBlur;
+}
+::view-transition-new(root) {
+  animation: 0.45s 0.05s cubic-bezier(0.4, 0, 0.2, 1) both slideUpIn;
+}
+
+@keyframes fadeOutBlur {
+  from { opacity: 1; filter: blur(0); }
+  to   { opacity: 0; filter: blur(8px); }
+}
+
+@keyframes slideUpIn {
+  from { opacity: 0; transform: translateY(24px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0);     filter: blur(0); }
+}
+
+/* Named elements for richer transitions on key pages */
+.hero-visual {
+  view-transition-name: hero-visual;
+}
+nav {
+  view-transition-name: nav-bar;
 }
 
 :root {
@@ -187,6 +267,7 @@ body {
   background-attachment: fixed;
   color: var(--body-text);
   min-height: 100vh;
+  transition: background-color 0.4s ease, color 0.3s ease;
 }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
@@ -677,10 +758,10 @@ select:focus {
 }
 
 @keyframes shutter-iris {
-  0%   { opacity: 0; clip-path: circle(100%); }
-  30%  { opacity: 1; clip-path: circle(40%); }
-  70%  { opacity: 1; clip-path: circle(40%); }
-  100% { opacity: 0; clip-path: circle(100%); }
+  0%   { opacity: 0; clip-path: circle(100%); filter: blur(2px); }
+  30%  { opacity: 1; clip-path: circle(40%);  filter: blur(0); }
+  70%  { opacity: 1; clip-path: circle(40%);  filter: blur(0); }
+  100% { opacity: 0; clip-path: circle(100%); filter: blur(2px); }
 }
 
 /* ── Scanner — Analyzing progress overlay ──────────────────────────────────── */
@@ -1887,12 +1968,12 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
 }
 
 /* Hero entrance — staggered children */
-.hero-logo   { animation: scaleIn 0.6s 0.05s ease-out both; }
-.hero-title  { animation: fadeLeft 0.7s 0.1s ease-out both; }
-.hero-subtitle { animation: fadeUpSm 0.55s 0.2s ease-out both; }
-.hero-tagline  { animation: fadeUpSm 0.55s 0.3s ease-out both; }
-.hero-cta-row  { animation: fadeUpSm 0.55s 0.4s ease-out both; }
-.hero-stats    { animation: fadeUp 0.55s 0.5s ease-out both; }
+.hero-logo    { animation: scaleInBlur 0.7s 0.05s ease-out both; }
+.hero-title   { animation: fadeLeftBlur 0.75s 0.1s ease-out both; }
+.hero-subtitle { animation: fadeUpBlur 0.6s 0.2s ease-out both; }
+.hero-tagline  { animation: fadeUpBlur 0.6s 0.3s ease-out both; }
+.hero-cta-row  { animation: fadeUpBlur 0.6s 0.4s ease-out both; }
+.hero-stats    { animation: fadeUpBlur 0.6s 0.5s ease-out both; }
 
 /* Stats numbers animate individually */
 .hero-stat-num {
@@ -1915,7 +1996,7 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
   filter: drop-shadow(0 12px 32px rgba(22,46,30,0.18));
   position: relative;
   z-index: 1;
-  animation: fadeRight 0.8s 0.15s ease-out both, float 6s 1.5s ease-in-out infinite;
+  animation: fadeRightBlur 0.85s 0.15s ease-out both, float 6s 1.5s ease-in-out infinite;
 }
 
 .hero-logo {
