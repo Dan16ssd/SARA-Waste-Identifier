@@ -67,9 +67,13 @@
       <path d="M204 84 L204 70 L190 70" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
       <path d="M56 252 L56 266 L70 266" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
       <path d="M204 252 L204 266 L190 266" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="2" stroke-linecap="round"/>
-      <!-- Scanning item silhouette -->
-      <rect x="95" y="110" width="70" height="90" rx="8" fill="none" stroke="rgba(74,222,128,0.25)" stroke-width="1"/>
-      <rect x="105" y="115" width="50" height="80" rx="4" fill="rgba(74,222,128,0.06)"/>
+      <!-- Scanning item — actual bottle photo -->
+      <clipPath id="scanArea">
+        <rect x="50" y="98" width="160" height="165" rx="12"/>
+      </clipPath>
+      <image href="/bottle.png" x="50" y="98" width="160" height="165" clip-path="url(#scanArea)" preserveAspectRatio="xMidYMid slice"/>
+      <!-- Subtle vignette overlay inside scan area -->
+      <rect x="50" y="98" width="160" height="165" rx="12" fill="none" stroke="rgba(74,222,128,0.2)" stroke-width="1"/>
       <!-- Scan line -->
       <line x1="56" y1="168" x2="204" y2="168" stroke="url(#scanLineGrad)" stroke-width="1.5">
         <animate attributeName="y1" from="84" to="266" dur="2.8s" repeatCount="indefinite"/>
