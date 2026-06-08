@@ -183,6 +183,9 @@ router.post('/posts/:postId/like', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'Database unavailable' });
 
   try {
+    const displayName = await lookupDisplayName(db, userId);
+    if (!displayName) return res.status(403).json({ error: 'Set a nickname first' });
+
     const postRef = db.collection('posts').doc(postId);
     const likeRef = db.collection('likes').doc(`${postId}_${userId}`);
 

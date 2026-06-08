@@ -132,7 +132,7 @@
         '<div class="comments-list"></div>' +
         '<div class="comment-composer">' +
           '<input type="text" class="comment-input" maxlength="300" placeholder="Write a reply…" autocomplete="off" />' +
-          '<button class="comment-submit">Reply</button>' +
+          '<button class="comment-submit" disabled>Reply</button>' +
         '</div>' +
       '</div>';
 
@@ -276,6 +276,8 @@
     } finally {
       input.disabled = false;
       input.focus();
+      const submit = input.closest('.comment-composer').querySelector('.comment-submit');
+      submit.disabled = (input.value.length === 0 || input.value.length > 300);
     }
   }
 
@@ -288,6 +290,10 @@
     // Like toggle
     if (e.target.closest('.like-btn')) {
       const btn = e.target.closest('.like-btn');
+
+      const ok = await ensureNickname();
+      if (!ok) return;
+
       btn.disabled = true;
       const wasLiked = btn.classList.contains('liked');
       const countEl  = btn.querySelector('.like-count');
@@ -399,6 +405,15 @@
       const card = e.target.closest('.post-card');
       card.querySelector('.comment-submit').click();
     }
+  });
+
+  // Enable/disable the Reply button based on comment text length (mirrors the composer)
+  feedEl.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('comment-input')) return;
+    const input  = e.target;
+    const submit = input.closest('.comment-composer').querySelector('.comment-submit');
+    const len    = input.value.length;
+    submit.disabled = (len === 0 || len > 300);
   });
 
   loadMoreBtn.addEventListener('click', () => loadFeed(false));
