@@ -48,8 +48,8 @@ app.use('/api/admin', adminModule.router);
 const chatRouter = require('./routes/chat');
 app.use('/api', chatRouter);
 
-const communityRouterTEMP = require('./routes/community');
-app.use('/api/community', communityRouterTEMP);
+const communityRouter = require('./routes/community');
+app.use('/api/community', communityRouter);
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
