@@ -34,10 +34,13 @@
   const navJoin   = document.getElementById('nav-join');
 
   if (orgId && orgName && orgBadge) {
-    orgBadge.textContent   = '📍 ' + orgName;
-    orgBadge.style.display = 'inline-flex';
-    if (navJoin) navJoin.style.display = 'none';
-  }
+      orgBadge.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:6px; vertical-align:middle;">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="var(--leaf)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="12" cy="9" r="2.5" fill="var(--leaf)"/>
+      </svg><span class="org-name">${orgName}</span>`;
+      orgBadge.style.display = 'inline-flex';
+      if (navJoin) navJoin.style.display = 'none';
+    }
 
   // ── GPS ───────────────────────────────────────────────────────────────────────
   let gpsData = { lat: null, lng: null, accuracy: null };
@@ -119,6 +122,33 @@
   const btnCameraRetry = document.getElementById('btn-camera-retry');
   const shutterOverlay = document.getElementById('shutter-overlay');
   const scanProgress   = document.getElementById('scan-progress');
+
+  async function checkCameraPermission() {
+    try {
+      if (!navigator.permissions) return;
+      const status = await navigator.permissions.query({ name: 'camera' });
+      if (status.state === 'granted') {
+        cameraStatus.classList.remove('visible');
+        btnCamera.disabled = false;
+        // attempt to start camera if allowed (may require user gesture in some browsers)
+        try { btnCamera.click(); } catch (e) {}
+      } else if (status.state === 'prompt') {
+        cameraStatus.textContent = 'Tap "Use Camera" to allow access';
+        cameraStatus.classList.add('visible');
+      } else {
+        cameraErrText.textContent = 'Camera access is blocked — enable it in browser settings.';
+        cameraErrBlock.classList.add('visible');
+      }
+      status.onchange = () => {
+        if (status.state === 'granted') { btnCamera.click(); cameraErrBlock.classList.remove('visible'); cameraStatus.classList.remove('visible'); }
+      };
+    } catch (e) {
+      // permissions API may not be available — ignore
+    }
+  }
+
+  checkCameraPermission();
+  tryGPS();
   const errorMsg      = document.getElementById('error-msg');
   const scanCards    = document.getElementById('scan-cards');
   const aiChatCard  = document.getElementById('ai-chat-card');
@@ -256,6 +286,7 @@
     detectStatus.textContent = 'Scanning…';
     detectStatus.classList.add('scanning');
     detectStatus.style.display = 'block';
+    if (scanProgress) scanProgress.style.display = 'flex';
 
     const controller = new AbortController();
     const abortTimer = setTimeout(() => controller.abort(), 15000);
@@ -313,6 +344,7 @@
       }
     } finally {
       arBusy = false;
+      if (scanProgress) scanProgress.style.display = 'none';
     }
   }
 

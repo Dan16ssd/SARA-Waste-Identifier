@@ -1872,3 +1872,11 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
   .hero-cta { width: 100%; justify-content: center; }
   .final-cta .btn { width: 100%; justify-content: center; }
 }
+
+/* Desktop: emphasize mockup on right and hide small logo */
+@media (min-width: 960px) {
+  .hero-logo { display: none; }
+  .hero-mockup { width: 340px; }
+  .hero { align-items: center; gap: 64px; }
+  .hero-content { max-width: 520px; }
+}
