@@ -214,4 +214,110 @@ router.post('/posts/:postId/like', async (req, res) => {
   }
 });
 
+// ── Comments ──────────────────────────────────────────────────────────────
+
+router.get('/posts/:postId/comments', async (req, res) => {
+  const { postId } = req.params;
+  const limit  = Math.min(parseInt(req.query.limit, 10) || PAGE_SIZE, 50);
+  const cursor = req.query.cursor ? new Date(req.query.cursor) : null;
+
+  const db = getDb();
+  if (!db) return res.status(500).json({ error: 'Database unavailable' });
+
+  try {
+    let q = db.collection('comments')
+      .where('postId', '==', postId)
+      .orderBy('createdAt', 'asc')
+      .limit(limit);
+    if (cursor && !isNaN(cursor.getTime())) q = q.startAfter(cursor);
+
+    const snap = await q.get();
+    const comments = snap.docs.map(d => {
+      const c = d.data();
+      return {
+        id:         d.id,
+        authorId:   c.authorId,
+        authorName: c.authorName,
+        text:       c.text,
+        createdAt:  c.createdAt.toDate().toISOString(),
+      };
+    });
+
+    const last = snap.docs[snap.docs.length - 1];
+    const nextCursor = (snap.docs.length === limit && last)
+      ? last.data().createdAt.toDate().toISOString()
+      : null;
+
+    return res.json({ comments, nextCursor });
+  } catch (err) {
+    console.error('GET /posts/:postId/comments failed:', err.message);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+router.post('/posts/:postId/comments', async (req, res) => {
+  const { postId }     = req.params;
+  const { userId, text } = req.body || {};
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+  const raw = String(text ?? '').trim();
+  if (!raw) return res.status(400).json({ error: 'Comment text is required' });
+  if (raw.length > COMMENT_MAX_LEN) return res.status(400).json({ error: 'Text is too long' });
+
+  const db = getDb();
+  if (!db) return res.status(500).json({ error: 'Database unavailable' });
+
+  try {
+    const postDoc = await db.collection('posts').doc(postId).get();
+    if (!postDoc.exists) return res.status(404).json({ error: 'Post not found' });
+
+    const displayName = await lookupDisplayName(db, userId);
+    if (!displayName) return res.status(403).json({ error: 'Set a nickname first' });
+
+    const createdAt = new Date();
+    const ref = await db.collection('comments').add({
+      postId,
+      authorId:   userId,
+      authorName: displayName,
+      text:       raw,
+      createdAt,
+    });
+
+    return res.status(201).json({
+      id:         ref.id,
+      authorId:   userId,
+      authorName: displayName,
+      text:       raw,
+      createdAt:  createdAt.toISOString(),
+    });
+  } catch (err) {
+    console.error('POST /posts/:postId/comments failed:', err.message);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+router.delete('/comments/:commentId', async (req, res) => {
+  const { commentId } = req.params;
+  const { userId }    = req.body || {};
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+  const db = getDb();
+  if (!db) return res.status(500).json({ error: 'Database unavailable' });
+
+  try {
+    const ref = db.collection('comments').doc(commentId);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: 'Comment not found' });
+    if (doc.data().authorId !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own comments' });
+    }
+
+    await ref.delete();
+    return res.json({ deleted: true });
+  } catch (err) {
+    console.error('DELETE /comments/:commentId failed:', err.message);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 module.exports = router;
