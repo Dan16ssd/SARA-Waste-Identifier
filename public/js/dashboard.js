@@ -2,11 +2,11 @@
   'use strict';
 
   // ── State ─────────────────────────────────────────────────────────────────────
-  let db                  = null;
-  let unsubscribeListener = null;
   let allScans            = [];
   let currentPeriod       = 'today';
   let viewMode            = 'markers';
+  let pollInterval        = null;
+  let lastScanCount       = 0;
 
   // ── Org context (from localStorage or URL param) ───────────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
@@ -39,29 +39,76 @@
     return '#6c757d';
   }
 
-  // ── Firebase init ──────────────────────────────────────────────────────────────
-  async function initFirebase() {
+  // ── Fetch scans from server API (Admin SDK, bypasses Firestore client rules) ──
+  async function fetchScans() {
     try {
-      const resp = await fetch('/api/firebase-config');
-      const cfg  = await resp.json();
-      if (!cfg.configured || !cfg.projectId || cfg.projectId === 'your-project-id') return false;
-      if (!firebase.apps.length) {
-        firebase.initializeApp({ apiKey: cfg.apiKey, projectId: cfg.projectId });
+      const params = new URLSearchParams({ period: currentPeriod });
+      if (orgId) params.set('org_id', orgId);
+      const resp = await fetch('/api/scans?' + params.toString());
+      const data = await resp.json();
+      if (data.error) {
+        console.warn('Scan fetch warning:', data.error);
+        const warn = document.getElementById('firebase-warning');
+        if (warn) {
+          warn.style.display = 'block';
+          warn.querySelector('p').textContent = data.error;
+        }
+        return;
       }
-      db = firebase.firestore();
-      return true;
-    } catch (e) {
-      console.error('Firebase init failed:', e);
-      return false;
+      const scans = (data.scans || []).map(parseScan);
+
+      // Detect new scans (for animations)
+      const newScans = lastScanCount === 0 ? [] : scans.filter(s => {
+        const ts = s.timestamp instanceof Date ? s.timestamp.getTime() : new Date(s.timestamp).getTime();
+        return ts > (Date.now() - 120000); // last 2 min
+      });
+      lastScanCount = scans.length;
+
+      // Clear and rebuild
+      allScans = [];
+      heatData = [];
+      clusterGroup.clearLayers();
+      clearTrails();
+      if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs([]);
+
+      scans.forEach(scan => {
+        allScans.push(scan);
+        const isNew = newScans.some(ns => ns.id === scan.id);
+        if (scan.latitude && scan.longitude) {
+          heatData.push([scan.latitude, scan.longitude, 1]);
+          const marker = createMarker(scan, isNew);
+          if (marker) clusterGroup.addLayer(marker);
+          pushTrail(scan);
+        }
+      });
+
+      redrawTrails();
+      if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs(heatData);
+
+      const coords = allScans.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
+      if (coords.length && lastScanCount < 2) leafletMap.fitBounds(coords, { padding: [40, 40], maxZoom: 18 });
+
+      renderStats();
+      updateCounter(allScans[0] || null);
+
+      // Hide warning if data loaded
+      const warn = document.getElementById('firebase-warning');
+      if (warn && lastScanCount > 0) warn.style.display = 'none';
+
+    } catch (err) {
+      console.error('Fetch scans error:', err);
+      const warn = document.getElementById('firebase-warning');
+      if (warn) {
+        warn.style.display = 'block';
+        warn.querySelector('p').textContent = 'Could not connect to server. Is the backend running?';
+      }
     }
   }
 
-  // ── Time filter ───────────────────────────────────────────────────────────────
-  function periodStart() {
-    const now = new Date();
-    if (currentPeriod === 'today') { const d = new Date(now); d.setHours(0,0,0,0); return d; }
-    if (currentPeriod === 'week')  { const d = new Date(now); d.setDate(d.getDate()-7); return d; }
-    const d = new Date(now); d.setDate(d.getDate()-30); return d;
+  function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    fetchScans();
+    pollInterval = setInterval(fetchScans, 15000); // poll every 15s
   }
 
   // ── Map init ──────────────────────────────────────────────────────────────────
@@ -273,102 +320,12 @@
     text.textContent = sorted[0][0] + ' — ' + sorted[0][1] + ' scans ' + label;
   }
 
-  // ── Firestore listener (org-scoped or public) ──────────────────────────────────
-  function subscribe() {
-    if (unsubscribeListener) unsubscribeListener();
-    allScans = []; heatData = [];
-    clusterGroup.clearLayers();
-    clearTrails();
-    if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs([]);
-
-    const since = firebase.firestore.Timestamp.fromDate(periodStart());
-    let initialDone = false;
-    const batch     = [];
-
-    // Filter by org_id — null means anonymous/public scans
-    let q = db.collection('scans')
-      .where('timestamp', '>=', since)
-      .orderBy('timestamp', 'desc')
-      .limit(500);
-
-    if (orgId) {
-      q = db.collection('scans')
-        .where('org_id', '==', orgId)
-        .where('timestamp', '>=', since)
-        .orderBy('timestamp', 'desc')
-        .limit(500);
-    } else {
-      // Public mode: show scans without an org
-      q = db.collection('scans')
-        .where('org_id', '==', null)
-        .where('timestamp', '>=', since)
-        .orderBy('timestamp', 'desc')
-        .limit(500);
-    }
-
-    unsubscribeListener = q.onSnapshot(
-      (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type !== 'added') return;
-          const scan = parseScan(change.doc.data());
-          if (!initialDone) {
-            batch.push(scan);
-          } else {
-            allScans.push(scan);
-            if (scan.latitude && scan.longitude) {
-              heatData.push([scan.latitude, scan.longitude, 1]);
-              if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs(heatData);
-            }
-            const marker = createMarker(scan, true);
-            if (marker) {
-              clusterGroup.addLayer(marker);
-              leafletMap.panTo([scan.latitude, scan.longitude], { animate: true });
-            }
-            pushTrail(scan);
-            redrawTrails();
-            renderStats();
-            updateCounter(scan);
-          }
-        });
-
-        if (!initialDone) {
-          initialDone = true;
-          allScans = batch.slice();
-          batch.forEach(scan => {
-            const marker = createMarker(scan, false);
-            if (marker) clusterGroup.addLayer(marker);
-            if (scan.latitude && scan.longitude) {
-              heatData.push([scan.latitude, scan.longitude, 1]);
-              pushTrail(scan);
-            }
-          });
-          redrawTrails();
-          if (leafletMap.hasLayer(heatLayer)) heatLayer.setLatLngs(heatData);
-          const coords = allScans.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
-          if (coords.length) leafletMap.fitBounds(coords, { padding: [40,40], maxZoom: 18 });
-          renderStats();
-          updateCounter(allScans[0] || null);
-        }
-      },
-      (err) => {
-        console.error('onSnapshot error:', err.message);
-        if (err.code === 'permission-denied') {
-          const warn = document.getElementById('firebase-warning');
-          if (warn) {
-            warn.style.display = 'block';
-            warn.querySelector('p').textContent =
-              'Firestore permission denied. Check your security rules.';
-          }
-        }
-      }
-    );
-  }
-
   function parseScan(raw) {
-    const ts  = raw.timestamp && raw.timestamp.toDate ? raw.timestamp.toDate() : new Date(raw.timestamp || 0);
+    const ts  = raw.timestamp ? new Date(raw.timestamp) : new Date();
     const lat = typeof raw.latitude  === 'number' ? raw.latitude  : null;
     const lng = typeof raw.longitude === 'number' ? raw.longitude : null;
     return {
+      id:            raw.id || '',
       item_name:     raw.item_name     || '',
       category:      raw.category      || '',
       location_name: raw.location_name || '',
@@ -402,12 +359,17 @@
       h1.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-5px; margin-right:6px;"><circle cx="12" cy="12" r="10" stroke="var(--leaf)" stroke-width="1.5" fill="none"/><ellipse cx="12" cy="12" rx="4" ry="10" stroke="var(--leaf)" stroke-width="1.5" fill="none"/><line x1="2" y1="12" x2="22" y2="12" stroke="var(--leaf)" stroke-width="1.5"/></svg>Global Public Scan Map';
     }
 
+    // Hide Firebase warning — using server API now
+    const warn = document.getElementById('firebase-warning');
+    if (warn) warn.style.display = 'none';
+
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentPeriod = btn.dataset.period;
-        if (db) subscribe();
+        lastScanCount = 0;
+        fetchScans();
       });
     });
 
@@ -415,14 +377,7 @@
       btn.addEventListener('click', () => setViewMode(btn.dataset.mode));
     });
 
-    const ok = await initFirebase();
-    if (!ok) {
-      const warn = document.getElementById('firebase-warning');
-      if (warn) warn.style.display = 'block';
-      return;
-    }
-
-    subscribe();
+    startPolling();
   }
 
   init();

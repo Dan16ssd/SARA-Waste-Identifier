@@ -37,6 +37,58 @@ scanRouter.setIo(io);
 scanRouter.setScanHistory(scanHistory);
 app.use('/api', scanRouter.router);
 
+// ── Server-side scan data (bypasses Firestore client security rules) ──────────
+app.get('/api/scans', async (req, res) => {
+  try {
+    const db = require('./utils/firebase-admin').getDb();
+    if (!db) return res.json({ scans: [], error: 'Firestore not configured' });
+
+    const { period = 'today', org_id } = req.query;
+    const now = new Date();
+    let since;
+    if (period === 'week')  { since = new Date(now); since.setDate(since.getDate() - 7); }
+    else if (period === 'month') { since = new Date(now); since.setDate(since.getDate() - 30); }
+    else { since = new Date(now); since.setHours(0, 0, 0, 0); }
+
+    let q = db.collection('scans')
+      .where('timestamp', '>=', since)
+      .orderBy('timestamp', 'desc')
+      .limit(500);
+
+    if (org_id) {
+      q = db.collection('scans')
+        .where('org_id', '==', org_id)
+        .where('timestamp', '>=', since)
+        .orderBy('timestamp', 'desc')
+        .limit(500);
+    }
+
+    const snap = await q.get();
+    const scans = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      scans.push({
+        id: doc.id,
+        item_name: d.item_name || '',
+        category: d.category || '',
+        location_name: d.location_name || '',
+        latitude: d.latitude || null,
+        longitude: d.longitude || null,
+        gps_accuracy: d.gps_accuracy || null,
+        regen_points: d.regen_points || 10,
+        user_id: d.user_id || 'anon',
+        org_id: d.org_id || null,
+        timestamp: d.timestamp && d.timestamp.toDate ? d.timestamp.toDate().toISOString() : null,
+      });
+    });
+
+    res.json({ scans });
+  } catch (err) {
+    console.error('/api/scans error:', err);
+    res.status(500).json({ scans: [], error: err.message });
+  }
+});
+
 const authRouter = require('./routes/auth');
 app.use('/api', authRouter);
 
