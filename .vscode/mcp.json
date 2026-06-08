@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "puppeteer": {
+      "command": "node",
+      "args": [
+        "node_modules/@modelcontextprotocol/server-puppeteer/dist/index.js"
+      ],
+      "env": {
+        "PUPPETEER_LAUNCH_OPTIONS": "{ \"headless\": false, \"defaultViewport\": { \"width\": 1280, \"height\": 800 }, \"args\": [\"--no-sandbox\"] }",
+        "ALLOW_DANGEROUS": "true"
+      }
+    }
+  }
+}

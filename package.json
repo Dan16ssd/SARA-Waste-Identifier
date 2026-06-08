@@ -1,10 +1,12 @@
 {
   "name": "trashscan",
   "version": "1.0.0",
-  "description": "",
+  "description": "SARA — Sustainable Analytics Recycling Assistant",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "mcp": "node node_modules/@modelcontextprotocol/server-puppeteer/dist/index.js",
+    "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -20,5 +22,8 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server-puppeteer": "^2025.5.12"
   }
 }

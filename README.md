@@ -64,6 +64,34 @@ Supports one-click deploys via **Render** (`render.yaml`), **Vercel** (`vercel.j
 ├── routes/            # Express route handlers
 ├── utils/             # Firebase admin, Gemini/Groq clients
 ├── middleware/        # Auth middleware
+├── .vscode/mcp.json   # MCP server config (Puppeteer browser automation)
 ├── server.js          # Entry point
 └── docs/              # Specs and implementation plans
+```
+
+## MCP Server — Browser Automation
+
+This project includes a Puppeteer MCP (Model Context Protocol) server that lets AI coding agents browse and inspect the website visually. It can navigate pages, take screenshots, click elements, execute JavaScript, and read console logs — useful for finding visual bugs and responsive issues.
+
+### Setup
+
+The MCP server is configured in `.vscode/mcp.json` for VS Code / GitHub Copilot. After running `npm install`, restart VS Code and the `puppeteer` server will appear in your MCP servers list.
+
+### Available Tools
+
+| Tool | What it does |
+|------|-------------|
+| `puppeteer_navigate` | Navigate to a URL (e.g. `http://localhost:3000`) |
+| `puppeteer_screenshot` | Capture page or element screenshots at custom dimensions |
+| `puppeteer_click` | Click any element by CSS selector |
+| `puppeteer_hover` | Hover over elements |
+| `puppeteer_fill` | Fill input fields |
+| `puppeteer_evaluate` | Run arbitrary JavaScript in the page |
+| `console://logs` | Read browser console output |
+
+### Manual Usage
+
+```bash
+# Start the MCP server standalone
+npm run mcp
 ```
