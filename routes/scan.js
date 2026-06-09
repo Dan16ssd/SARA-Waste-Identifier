@@ -11,7 +11,8 @@ let _scanHistory = null;
 function setIo(io)           { _io = io; }
 function setScanHistory(sh)  { _scanHistory = sh; }
 
-const POINTS_PER_SCAN = 10;
+const POINTS_PER_SCAN   = 10;
+const DAILY_POINTS_CAP  = 100;
 
 router.post('/scan', async (req, res) => {
   const {
@@ -68,7 +69,8 @@ router.post('/scan', async (req, res) => {
       if (_scanHistory.length > 200) _scanHistory.length = 200;
     }
 
-    let total_points = null;
+    let total_points  = null;
+    let pointsAwarded = POINTS_PER_SCAN; // default when db is unavailable
     const db = getDb();
     if (db) {
       const timestamp = new Date();
@@ -91,16 +93,38 @@ router.post('/scan', async (req, res) => {
         });
       }
 
-      const userRef = db.collection('users').doc(user_id);
+      const userRef  = db.collection('users').doc(user_id);
+      const todayStr = timestamp.toISOString().slice(0, 10); // "YYYY-MM-DD" UTC
+      pointsAwarded  = 0; // will be calculated inside transaction
+
       await db.runTransaction(async (t) => {
-        const doc = await t.get(userRef);
-        const current = doc.exists ? (doc.data().total_points || 0) : 0;
-        total_points  = current + POINTS_PER_SCAN;
-        t.set(userRef, { total_points, last_scan: timestamp, org_id: org_id || null }, { merge: true });
+        const doc  = await t.get(userRef);
+        const data = doc.exists ? doc.data() : {};
+
+        const current      = data.total_points  || 0;
+        const dailyReset   = data.daily_reset   || '';
+        const dailyEarned  = dailyReset === todayStr ? (data.daily_points || 0) : 0;
+
+        pointsAwarded = Math.max(0, Math.min(POINTS_PER_SCAN, DAILY_POINTS_CAP - dailyEarned));
+        total_points  = current + pointsAwarded;
+
+        t.set(userRef, {
+          total_points,
+          daily_points: dailyEarned + pointsAwarded,
+          daily_reset:  todayStr,
+          last_scan:    timestamp,
+          org_id:       org_id || null,
+        }, { merge: true });
       });
     }
 
-    return res.json({ items, binId, regen_points: POINTS_PER_SCAN, total_points });
+    return res.json({
+      items,
+      binId,
+      regen_points:    pointsAwarded,
+      total_points,
+      daily_cap_reached: pointsAwarded === 0,
+    });
   } catch (err) {
     console.error('Scan error:', err);
     return res.status(500).json({ error: 'Scan failed', details: err.message });

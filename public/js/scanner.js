@@ -26,6 +26,10 @@
 
   updatePointsBadge(getStoredPoints());
 
+  // Tracks last scan's points result so showResult can display the correct message
+  let _lastEarned = 10;
+  let _lastCapped = false;
+
   // ── Org context ───────────────────────────────────────────────────────────────
   const orgId   = localStorage.getItem('sara_org_id')   || null;
   const orgName = localStorage.getItem('sara_org_name') || null;
@@ -636,15 +640,19 @@
       buildCards(items);
       items.forEach((item) => addLogEntry(item, locationName));
 
+      const earned   = data.regen_points ?? 10;
+      const capped   = data.daily_cap_reached === true;
+      _lastEarned = earned;
+      _lastCapped = capped;
       let newTotal;
       if (data.total_points !== null && data.total_points !== undefined) {
         newTotal = data.total_points;
       } else {
-        newTotal = getStoredPoints() + 10;
+        newTotal = getStoredPoints() + earned;
       }
       savePoints(newTotal);
       updatePointsBadge(newTotal);
-      showPointsToast(newTotal);
+      showPointsToast(newTotal, earned, capped);
     } catch (err) {
       detectStatus.style.display = 'none';
       scanProgress.style.display = 'none';
@@ -704,17 +712,23 @@
     const earnedEl   = document.getElementById('points-earned');
     const earnedText = document.getElementById('points-earned-text');
     if (earnedEl && earnedText) {
-      earnedText.textContent = '+10 ReGen Points earned';
+      if (_lastCapped) {
+        earnedText.textContent = 'Daily cap reached — 0 pts (resets tomorrow)';
+      } else {
+        earnedText.textContent = '+' + _lastEarned + ' ReGen Points earned';
+      }
       earnedEl.style.display = 'block';
     }
 
     initAiChat(item);
   }
 
-  function showPointsToast(total) {
+  function showPointsToast(total, earned, capped) {
     const toast = document.getElementById('points-toast');
     if (!toast) return;
-    toast.textContent = '+10 ReGen Points! Total: ' + total + ' pts';
+    toast.textContent = capped
+      ? 'Daily cap reached (100 pts) — scan freely, points resume tomorrow!'
+      : '+' + earned + ' ReGen Points! Total: ' + total + ' pts';
     toast.classList.add('visible');
     setTimeout(() => toast.classList.remove('visible'), 3500);
   }
