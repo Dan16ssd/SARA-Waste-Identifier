@@ -125,6 +125,17 @@ function parseAndEnrichArray(rawText) {
 
   if (!Array.isArray(items)) items = [items];
 
+  // Models sometimes return a placeholder item instead of [] when nothing
+  // waste-like is in frame (e.g. {"label":"None"}). Drop those.
+  const JUNK_LABELS = new Set(['none', 'unknown', 'nothing', 'no item', 'no items', 'n/a', 'na', 'null', 'not applicable', '-']);
+  items = items.filter((item) => {
+    const label = String(item.label || '').trim().toLowerCase();
+    const mat   = String(item.material || '').trim().toLowerCase();
+    if (!label && !mat) return false;
+    if (JUNK_LABELS.has(label) || JUNK_LABELS.has(mat)) return false;
+    return true;
+  });
+
   return items.map((item) => {
     const raw = (item.material || '').toLowerCase();
     const materialKey = getMaterialKey(raw);

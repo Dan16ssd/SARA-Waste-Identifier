@@ -645,6 +645,11 @@
         return;
       }
 
+      if (data.in_use_only === true) {
+        showError('This item looks like it is still in use, not waste — recycling info is shown above, but ReGen Points are only earned for actual trash.');
+        return;
+      }
+
       const earned   = data.regen_points ?? 10;
       const capped   = data.daily_cap_reached === true;
       _lastEarned = earned;

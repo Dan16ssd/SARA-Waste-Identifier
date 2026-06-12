@@ -70,9 +70,12 @@ router.post('/scan', async (req, res) => {
       if (_scanHistory.length > 200) _scanHistory.length = 200;
     }
 
-    // No waste items detected → nothing to log, no points (closes the point-farming hole)
+    // Only items the AI judged as actual discarded waste earn points —
+    // in-use belongings (your phone, a full bottle on a desk) do not.
+    const wasteItems = toLog.filter(i => i.in_use !== true);
+
     let total_points  = null;
-    let pointsAwarded = toLog.length > 0 ? POINTS_PER_SCAN : 0; // default when db is unavailable
+    let pointsAwarded = wasteItems.length > 0 ? POINTS_PER_SCAN : 0; // default when db is unavailable
     const db = getDb();
     if (db && toLog.length > 0) {
       const timestamp = new Date();
@@ -95,7 +98,9 @@ router.post('/scan', async (req, res) => {
         const dailyEarned  = sameDay ? (data.daily_points || 0) : 0;
         const dailyScans   = sameDay ? (data.daily_scans  || 0) : 0;
 
-        pointsAwarded = Math.max(0, Math.min(POINTS_PER_SCAN, DAILY_POINTS_CAP - dailyEarned));
+        pointsAwarded = wasteItems.length === 0
+          ? 0
+          : Math.max(0, Math.min(POINTS_PER_SCAN, DAILY_POINTS_CAP - dailyEarned));
         total_points  = current + pointsAwarded;
         scansAllowed  = Math.max(0, Math.min(toLog.length, DAILY_SCAN_WRITE_CAP - dailyScans));
 
@@ -131,8 +136,9 @@ router.post('/scan', async (req, res) => {
       binId,
       regen_points:    pointsAwarded,
       total_points,
-      daily_cap_reached: toLog.length > 0 && pointsAwarded === 0,
+      daily_cap_reached: wasteItems.length > 0 && pointsAwarded === 0,
       no_items: toLog.length === 0,
+      in_use_only: toLog.length > 0 && wasteItems.length === 0,
     });
   } catch (err) {
     console.error('Scan error:', err);
