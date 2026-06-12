@@ -1,7 +1,9 @@
 node_modules/
 .env
 data/logs.json
-behavior.md
 .claude
-AR.MD
-pipeline.md
+
+# All markdown files stay out of git (pitch docs, plans, notes) — except the repo README
+*.md
+*.MD
+!/README.md
