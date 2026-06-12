@@ -20,8 +20,11 @@ const PROMPT =
   'locations so the app can crop them, and provide recycling data. ' +
   'For every distinct waste or recyclable item you see in the image, you must find its boundaries and return the data. ' +
   'CRITICAL: Provide the location using normalized bounding box coordinates [ymin, xmin, ymax, xmax] on a scale of 0 to 1000. ' +
+  'Also set "in_use": true when the item appears to still be in active use rather than discarded — e.g. held in a hand, ' +
+  'full or unopened, plugged in, or placed on a desk or shelf; set "in_use": false when it appears to be waste — ' +
+  'empty, crushed, on the ground, or in or near a bin. If the image contains no waste or recyclable items at all, return []. ' +
   'Output ONLY a JSON array — no markdown, no code fences, no conversational text: ' +
-  '[{"box_2d":[200,150,600,850],"label":"Plastic Water Bottle","category":"Recyclable","material":"PET Plastic","action_required":"Rinse, crush, and place in the blue recycling bin."}]';
+  '[{"box_2d":[200,150,600,850],"label":"Plastic Water Bottle","category":"Recyclable","material":"PET Plastic","in_use":false,"action_required":"Rinse, crush, and place in the blue recycling bin."}]';
 
 // ── Material key helper ───────────────────────────────────────────────────────
 function getMaterialKey(raw) {
@@ -134,6 +137,7 @@ function parseAndEnrichArray(rawText) {
       material: guide.name || item.material,
       category: item.category || guide.name,
       recyclable: typeof item.recyclable === 'boolean' ? item.recyclable : guide.recyclable,
+      in_use: item.in_use === true,
       guidelines: guide.guidelines,
       icon: guide.icon,
       disposalInstructions: item.action_required || guide.guidelines[0],

@@ -3,7 +3,7 @@
 const express      = require('express');
 const router       = express.Router();
 const { requireAuth } = require('../middleware/auth');
-const { getOrgBins, setOrgBin, deleteOrgBin } = require('../utils/firebase-admin');
+const { getDb, getOrgBins, setOrgBin, deleteOrgBin } = require('../utils/firebase-admin');
 
 let _io          = null;
 let _scanHistory = null;
@@ -87,6 +87,72 @@ router.post('/bins', requireAuth, async (req, res) => {
     res.status(201).json(newBin);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add bin' });
+  }
+});
+
+// GET /api/admin/scans — recent map scans the admin may moderate
+// (scans belonging to the admin's org, plus unassigned public scans)
+router.get('/scans', requireAuth, async (req, res) => {
+  const org_id = req.user && req.user.org_id;
+  if (!org_id) return res.status(403).json({ error: 'No organization associated with this account' });
+
+  try {
+    const db = getDb();
+    if (!db) return res.json({ scans: [], error: 'Firestore not configured' });
+
+    const snap = await db.collection('scans')
+      .orderBy('timestamp', 'desc')
+      .limit(200)
+      .get();
+
+    const scans = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      if (d.org_id && d.org_id !== org_id) return; // other orgs' data stays invisible
+      scans.push({
+        id:            doc.id,
+        item_name:     d.item_name || '',
+        category:      d.category || '',
+        location_name: d.location_name || '',
+        latitude:      d.latitude || null,
+        longitude:     d.longitude || null,
+        user_id:       d.user_id || 'anon',
+        org_id:        d.org_id || null,
+        in_use:        d.in_use === true,
+        timestamp:     d.timestamp && d.timestamp.toDate ? d.timestamp.toDate().toISOString() : null,
+      });
+    });
+
+    res.json({ scans });
+  } catch (err) {
+    console.error('/api/admin/scans error:', err);
+    res.status(500).json({ error: 'Failed to load scans' });
+  }
+});
+
+// DELETE /api/admin/scans/:id — remove a bogus scan from the map
+router.delete('/scans/:id', requireAuth, async (req, res) => {
+  const org_id = req.user && req.user.org_id;
+  if (!org_id) return res.status(403).json({ error: 'No organization associated with this account' });
+
+  try {
+    const db = getDb();
+    if (!db) return res.status(503).json({ error: 'Firestore not configured' });
+
+    const ref = db.collection('scans').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: 'Scan not found' });
+
+    const data = doc.data();
+    if (data.org_id && data.org_id !== org_id) {
+      return res.status(403).json({ error: 'Scan belongs to another organization' });
+    }
+
+    await ref.delete();
+    res.json({ message: 'Scan removed from the map' });
+  } catch (err) {
+    console.error('/api/admin/scans delete error:', err);
+    res.status(500).json({ error: 'Failed to delete scan' });
   }
 });
 

@@ -640,6 +640,11 @@
       buildCards(items);
       items.forEach((item) => addLogEntry(item, locationName));
 
+      if (items.length === 0) {
+        showError('No waste or recyclable items detected — get closer to the item and try again. (No points awarded for empty scans.)');
+        return;
+      }
+
       const earned   = data.regen_points ?? 10;
       const capped   = data.daily_cap_reached === true;
       _lastEarned = earned;

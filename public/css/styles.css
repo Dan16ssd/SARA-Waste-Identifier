@@ -2312,3 +2312,36 @@ nav.nav-open .nav-toggle-bar:nth-child(3) { transform: translateY(-6px) rotate(-
   .hero-content { max-width: 520px; }
   .hero-visual { padding-left: 24px; }
 }
+
+/* ── Sponsors strip ─────────────────────────────────────────────────────────── */
+/* Sponsor artwork is white-on-transparent, so this band stays dark */
+.sponsors {
+  background: var(--forest);
+  text-align: center;
+  padding: 48px 24px;
+  margin: 64px 0 72px;
+}
+
+.sponsors-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sage-300);
+  margin-bottom: 22px;
+}
+
+.sponsor-logo {
+  height: 58px;
+  max-width: 82vw;
+  object-fit: contain;
+  opacity: 0.95;
+  transition: opacity 0.18s ease;
+}
+
+.sponsor-logo:hover { opacity: 1; }
+
+@media (max-width: 600px) {
+  .sponsors { padding: 36px 18px; margin: 48px 0 56px; }
+  .sponsor-logo { height: 44px; }
+}

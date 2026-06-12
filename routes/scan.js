@@ -11,8 +11,9 @@ let _scanHistory = null;
 function setIo(io)           { _io = io; }
 function setScanHistory(sh)  { _scanHistory = sh; }
 
-const POINTS_PER_SCAN   = 10;
-const DAILY_POINTS_CAP  = 100;
+const POINTS_PER_SCAN      = 10;
+const DAILY_POINTS_CAP     = 100;
+const DAILY_SCAN_WRITE_CAP = 50; // max scan documents per user per day (keeps the map flood-proof)
 
 router.post('/scan', async (req, res) => {
   const {
@@ -69,16 +70,46 @@ router.post('/scan', async (req, res) => {
       if (_scanHistory.length > 200) _scanHistory.length = 200;
     }
 
+    // No waste items detected → nothing to log, no points (closes the point-farming hole)
     let total_points  = null;
-    let pointsAwarded = POINTS_PER_SCAN; // default when db is unavailable
+    let pointsAwarded = toLog.length > 0 ? POINTS_PER_SCAN : 0; // default when db is unavailable
     const db = getDb();
-    if (db) {
+    if (db && toLog.length > 0) {
       const timestamp = new Date();
       const latVal = typeof lat === 'number' ? lat : (parseFloat(lat) || null);
       const lngVal = typeof lng === 'number' ? lng : (parseFloat(lng) || null);
       const accVal = typeof gps_accuracy === 'number' ? gps_accuracy : (parseFloat(gps_accuracy) || null);
 
-      for (const item of toLog) {
+      const userRef  = db.collection('users').doc(user_id);
+      const todayStr = timestamp.toISOString().slice(0, 10); // "YYYY-MM-DD" UTC
+      pointsAwarded  = 0;  // will be calculated inside transaction
+      let scansAllowed = 0; // how many scan docs this user may still write today
+
+      await db.runTransaction(async (t) => {
+        const doc  = await t.get(userRef);
+        const data = doc.exists ? doc.data() : {};
+
+        const current      = data.total_points  || 0;
+        const dailyReset   = data.daily_reset   || '';
+        const sameDay      = dailyReset === todayStr;
+        const dailyEarned  = sameDay ? (data.daily_points || 0) : 0;
+        const dailyScans   = sameDay ? (data.daily_scans  || 0) : 0;
+
+        pointsAwarded = Math.max(0, Math.min(POINTS_PER_SCAN, DAILY_POINTS_CAP - dailyEarned));
+        total_points  = current + pointsAwarded;
+        scansAllowed  = Math.max(0, Math.min(toLog.length, DAILY_SCAN_WRITE_CAP - dailyScans));
+
+        t.set(userRef, {
+          total_points,
+          daily_points: dailyEarned + pointsAwarded,
+          daily_scans:  dailyScans + scansAllowed,
+          daily_reset:  todayStr,
+          last_scan:    timestamp,
+          org_id:       org_id || null,
+        }, { merge: true });
+      });
+
+      for (const item of toLog.slice(0, scansAllowed)) {
         await db.collection('scans').add({
           item_name:    item.object,
           category:     item.material,
@@ -90,32 +121,9 @@ router.post('/scan', async (req, res) => {
           user_id,
           org_id:       org_id || null,
           regen_points: POINTS_PER_SCAN,
+          in_use:       item.in_use === true,
         });
       }
-
-      const userRef  = db.collection('users').doc(user_id);
-      const todayStr = timestamp.toISOString().slice(0, 10); // "YYYY-MM-DD" UTC
-      pointsAwarded  = 0; // will be calculated inside transaction
-
-      await db.runTransaction(async (t) => {
-        const doc  = await t.get(userRef);
-        const data = doc.exists ? doc.data() : {};
-
-        const current      = data.total_points  || 0;
-        const dailyReset   = data.daily_reset   || '';
-        const dailyEarned  = dailyReset === todayStr ? (data.daily_points || 0) : 0;
-
-        pointsAwarded = Math.max(0, Math.min(POINTS_PER_SCAN, DAILY_POINTS_CAP - dailyEarned));
-        total_points  = current + pointsAwarded;
-
-        t.set(userRef, {
-          total_points,
-          daily_points: dailyEarned + pointsAwarded,
-          daily_reset:  todayStr,
-          last_scan:    timestamp,
-          org_id:       org_id || null,
-        }, { merge: true });
-      });
     }
 
     return res.json({
@@ -123,7 +131,8 @@ router.post('/scan', async (req, res) => {
       binId,
       regen_points:    pointsAwarded,
       total_points,
-      daily_cap_reached: pointsAwarded === 0,
+      daily_cap_reached: toLog.length > 0 && pointsAwarded === 0,
+      no_items: toLog.length === 0,
     });
   } catch (err) {
     console.error('Scan error:', err);

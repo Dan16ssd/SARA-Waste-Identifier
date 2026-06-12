@@ -64,9 +64,12 @@ app.get('/api/scans', async (req, res) => {
     }
 
     const snap = await q.get();
+    const includeInUse = req.query.include_in_use === '1';
     const scans = [];
     snap.forEach(doc => {
       const d = doc.data();
+      // Items the AI judged as still in use (not discarded) stay off the public map
+      if (d.in_use === true && !includeInUse) return;
       scans.push({
         id: doc.id,
         item_name: d.item_name || '',
@@ -78,6 +81,7 @@ app.get('/api/scans', async (req, res) => {
         regen_points: d.regen_points || 10,
         user_id: d.user_id || 'anon',
         org_id: d.org_id || null,
+        in_use: d.in_use === true,
         timestamp: d.timestamp && d.timestamp.toDate ? d.timestamp.toDate().toISOString() : null,
       });
     });

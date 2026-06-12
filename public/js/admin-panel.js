@@ -161,6 +161,55 @@
     }
   }
 
+  // ── Map scan moderation ──────────────────────────────────────────────────────
+  async function loadMapScans() {
+    const listEl = document.getElementById('map-scans-list');
+    if (!listEl) return;
+    try {
+      const resp = await fetch('/api/admin/scans', { headers: authHeaders });
+      if (resp.status === 401) { logout(); return; }
+      const { scans, error } = await resp.json();
+
+      if (error || !scans || !scans.length) {
+        listEl.innerHTML = '<p style="color:var(--muted);">' + esc(error || 'No map scans yet.') + '</p>';
+        return;
+      }
+
+      listEl.innerHTML = scans.map(scan => `
+        <div class="log-entry" data-scan-id="${esc(scan.id)}" style="display:flex; align-items:center; gap:10px;">
+          <span class="log-time">${scan.timestamp ? new Date(scan.timestamp).toLocaleString() : '—'}</span>
+          <span class="log-msg" style="flex:1;">
+            <strong>${esc(scan.item_name || '—')}</strong> · ${esc(scan.category || '—')}
+            · ${esc(scan.location_name || 'Unknown')} · ${esc(scan.user_id)}
+            ${scan.in_use ? '<span class="badge badge-warn" style="margin-left:6px;">in use — hidden from map</span>' : ''}
+          </span>
+          <button class="btn btn-danger btn-delete-scan" style="padding:4px 12px; font-size:0.8rem;">Delete</button>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('.btn-delete-scan').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const row = btn.closest('[data-scan-id]');
+          const id  = row.dataset.scanId;
+          if (!confirm('Remove this scan from the map?')) return;
+          const resp = await fetch(`/api/admin/scans/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: authHeaders,
+          });
+          if (resp.ok) {
+            row.remove();
+          } else {
+            const data = await resp.json().catch(() => ({}));
+            alert(data.error || 'Failed to delete scan.');
+          }
+        });
+      });
+    } catch (err) {
+      console.error('Failed to load map scans:', err);
+      listEl.innerHTML = '<p style="color:var(--muted);">Could not load map scans.</p>';
+    }
+  }
+
   function logout() {
     localStorage.removeItem('trashscan_token');
     window.location.href = '/admin-login.html';
@@ -177,4 +226,5 @@
   // Initial load
   loadBins();
   loadLogs();
+  loadMapScans();
 })();
